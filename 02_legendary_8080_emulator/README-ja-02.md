@@ -1,3 +1,5 @@
+[TOP README](../README-ja.md)
+
 # 伝説の8080エミュレーター
 
 ## Description

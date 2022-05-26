@@ -1,3 +1,5 @@
+[TOP README](../README-ja.md)
+
 # Altair 数式電卓
 
 ## Description

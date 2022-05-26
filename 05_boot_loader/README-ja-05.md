@@ -1,3 +1,5 @@
+[TOP README](../README-ja.md)
+
 # Altair ブートローダー
 
 ## Description

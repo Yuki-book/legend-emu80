@@ -1,3 +1,5 @@
+[TOP README](../README-ja.md)
+
 # 8080数式電卓
 
 ## Description

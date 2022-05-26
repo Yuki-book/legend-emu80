@@ -1,3 +1,5 @@
+[TOP README](../README-ja.md)
+
 # 数式電卓 lex / yacc
 
 ## Description
