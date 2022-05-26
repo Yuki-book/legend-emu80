@@ -1,0 +1,56 @@
+    UNIVERSAL SYM80
+;============ SYM80.MAC
+;
+;=== PDP-10 register
+AC0=^O000
+AC1=^O001
+AC2=^O002
+AC3=^O003
+;
+R%AA=^O004   ; AC04
+R%BC=^O005   ; AC05
+R%DE=^O006   ; AC06
+R%HL=^O007   ; AC07
+R%SP=^O010   ; AC10
+R%PC=^O011   ; AC11
+R%FG=^O012   ; AC12
+R%MM=^O013   ; AC13
+;
+AC14=^O014   ; 
+AC15=^O015   ; i8080 OP
+AC16=^O016   ; PDP10 OP
+P=^O017      ; STACK
+;
+;=== 8080 register
+B=0    
+C=1    
+D=2    
+E=3    
+H=4    
+L=5    
+M=6    
+A=7    
+SP=6
+PSW=6
+;
+FLG%S=^B10000000     ; SIGN
+FLG%Z=^B01000000     ; ZERO
+FLG%C=^B00000001     ; CARRY
+;
+RQ%S=FLG%S
+RQ%Z=FLG%Z
+RQ%C=FLG%C
+RQ%C16=RQ%C_8
+RQ%SZC=FLG%S+FLG%Z+FLG%C
+RQ%SZ%=FLG%S+FLG%Z
+RQ%%%C=FLG%C
+;
+UUO1=^O001_9
+UUO2=^O002_9
+UUO3=^O003_9
+;
+OPDEF  CALLS       [PUSHJ P,0]
+OPDEF  RETURN      [POPJ  P,0]
+;
+;========================================
+    END

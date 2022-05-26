@@ -1,0 +1,40 @@
+    UNIVERSAL TRYSYM
+;============ TRYSYM.MAC
+;
+;-------------------- OP
+UUO=^O001_9
+OP%LDA=^O072
+OP%CMA=^O057
+OP%STA=^O062
+OP%HLT=^O166
+;-------------------- PSEUDO OP
+DEFINE OP (OP80) <
+  XWD  UUO ,OP80
+>
+DEFINE DB (DATA8) <
+  XWD  0 ,<DATA8 & ^O377>
+>
+DEFINE DW (DATA16) <
+  XWD  0 ,< ^O377 & DATA16 >
+  XWD  0 ,< ^O377 & DATA16_-8 >
+>
+DEFINE ORG (ADR) <
+  LOC  ADR
+>
+;-------------------- 8080 OP
+DEFINE LDA (adr)   < 
+   OP  OP%LDA
+   DW  adr
+>
+DEFINE CMA  < 
+   OP  OP%CMA
+>
+DEFINE STA (adr)   < 
+   OP  OP%STA
+   DW  adr
+>
+DEFINE HLT  < 
+   OP  OP%HLT
+>
+;
+    END  

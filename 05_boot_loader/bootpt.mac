@@ -1,0 +1,56 @@
+   TITLE   BOOTPT - BOOT PTR
+   SEARCH  ASM80,SYM80
+   ENTRY   MAIN80
+   .REQUIRE EMU80 
+   SALL
+BADR=140
+   RADIX   10
+SIOCTL=18    ; SIO CONTROL 
+SIODAT=19    ; SIO DATA   
+;-------------------- MAIN
+    LOC  0
+    HLT
+    DW   0
+MAIN80:
+    MVI  A,3
+    OUT  SIOCTL  ; SIO INIT
+    MVI  A,8
+    OUT  SIOCTL  ; SIO SET
+    LXI  H,BADR
+    MVI  B,0
+LOOP:
+    LXI  D,0
+    XCHG
+;
+LPGETD:
+    IN   SIOCTL  ; SIO STATUS
+    RRC
+    JNC  LPGETD
+    IN   SIODAT  ; SIO DATA
+    CPI  " "+1
+    JC   LPGETD
+;
+    CPI  "0"
+    JC   EXGETD
+    CPI  "8"
+    JNC  EXGETD
+    ANI  7
+    MOV  C,A
+    DAD  H
+    DAD  H
+    DAD  H
+    DAD  B
+    JMP  LPGETD
+EXGETD:
+    XCHG
+    MOV  M,E
+    INX  H
+    CPI  "$"
+    JNZ  LOOP
+;
+    MVI  A,^O303 ; JMP
+    STA  0
+    LXI  H,BADR
+    SHLD 1
+    HLT
+    END  

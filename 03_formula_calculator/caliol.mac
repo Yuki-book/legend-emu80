@@ -1,0 +1,118 @@
+   TITLE   CALIOL - CALC I/O LIBRARY
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   ENTRY   OUTSTR,INPSTR,INPTTY
+   EXTERN  OUTCHR,INPCHR
+   SALL
+   RADIX   10
+;=================================
+;== I/O LIB
+;=================================
+;
+;=============== OUTPUT STRING
+; (I) DE : ASCIZ STRING
+; (O) DE : ASCIZ STRING (UPDATE)
+OUTSTR:
+   PUSH  PSW
+LPOUT:
+   LDAX  D
+   INX   D
+   ANA   A
+   JZ    OUTEXIT
+   CALL  OUTCHR
+   JMP   LPOUT
+OUTEXIT:
+   POP   PSW
+   RET
+;
+;=============== INPUT STRING
+; (I) C  : BUFF SIZE
+;     HL : BUFF ADR
+; (O) A  : TERMINATE CODE
+;            00 : CR , FF : DEL , 01 : FULL
+INPSTR:
+   PUSH  B
+   PUSH  H
+   XRA   A
+   CALL  CLRMEM   ; ZERO CLEAR
+   MVI   B,CX01   ; B : 01
+INPSLP:
+   CALL  INPCHR   ;  A : CHAR
+   CPI   CHLF     ;  A == LF
+   JZ    INPSLP
+   CALL  OUTCHR   ;  A : CHAR
+   MOV   M,A
+   INX   H
+   CPI   CHCR     ;  A == CR
+   JNZ   INPS1
+   LXI   B,CX00*256+1 ; B : 00
+   JMP   INPS7
+INPS1:
+   CPI   CHDEL    ;  A == DEL
+   JNZ   INPS7
+   LXI   B,CXFF*256+1 ; B : FF
+INPS7:
+   DCR   C
+   JNZ   INPSLP
+   MOV   A,B
+   POP   H
+   POP   B
+   RET
+;
+;=============== CLEAR MEMORY
+; (I) HL :  ADDRESS
+;     A  :  DATA
+;     C  :  SIZE
+CLRMEM:
+   PUSH  B
+   PUSH  H
+CLRMLP:
+   MOV   M,A
+   INX   H
+   DCR   C
+   JNZ   CLRMLP
+   POP   H
+   POP   B
+   RET
+;
+;=============== INPUT TTY
+; (I) C  : BUFF SIZE
+;     HL : BUFF ADDRESS
+;     DE : PROMPT MESSAGE
+INPTTY:
+   PUSH  PSW
+   PUSH  B
+   PUSH  D
+   PUSH  H
+INPNX:             ;===
+   PUSH  D
+   CALL  OUTSTR    ; DISPLAY PROMPT
+   CALL  INPSTR    ; INPUT STRING
+   POP   D
+   ANA   A         ; A : TERMINATE CODE
+   JZ    INPEX     ; A=00 CR
+   PUSH  D
+   ANA   A
+   LXI   D,INDEL   ; A=FF DEL
+   JM    INP20
+   LXI   D,INFUL   ; A=01 FULL
+INP20:
+   CALL  OUTSTR
+   POP   D
+   JMP   INPNX     ;=== RETRY
+;
+INPEX:
+   LXI   D,CRLF
+   CALL  OUTSTR
+   POP   H
+   POP   D
+   POP   B
+   POP   PSW
+   RET
+;
+CRLF:   DB  CHCR,CHLF,0
+INFUL:  DB  " ???",CHCR,CHLF,0
+INDEL:  DB  " XXX",CHCR,CHLF,0
+;
+;===================================
+   END

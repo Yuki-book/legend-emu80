@@ -1,0 +1,39 @@
+   TITLE   EMUIO - I/O Emulators (dummy)
+;========= EMUIO.MAC
+   SUBTTL  IO NOT SEPORT 
+   SEARCH  MONSYM,SYM80
+   ENTRY   PIN,POUT
+   LALL
+   RADIX  8
+;----------------------------
+; 
+PIN:
+    PUSH    P,AC0
+    PUSH    P,AC1
+    PUSH    P,AC2
+;
+    HRROI   AC1,[ASCIZ /? Not Seport OP (IN)/]
+    PSOUT%
+    HALTF%
+;
+    POP     P,AC2
+    POP     P,AC1
+    POP     P,AC0
+    RETURN
+;
+POUT:
+    PUSH    P,AC0
+    PUSH    P,AC1
+    PUSH    P,AC2
+;
+    HRROI   AC1,[ASCIZ /? Not Seport OP (OUT)/]
+    PSOUT%
+    HALTF%
+;
+    POP     P,AC2
+    POP     P,AC1
+    POP     P,AC0
+    RETURN
+;
+    LIT
+    END

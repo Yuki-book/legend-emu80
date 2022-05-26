@@ -1,0 +1,43 @@
+   TITLE   CALIOB - CALC I/O BASIC 
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   SEARCH  MONSYM
+   ENTRY   PORTINIT,OUTCHR,INPCHR
+   SALL
+   RADIX   10
+;=============== PORT INIT
+PORTINIT:
+   RET
+;=============== OUTPUT CHAR
+; (I) A  : CHAR
+OUTCHR:
+   PUSH  PSW
+   PUSH  B
+   PUSH  D
+   PUSH  H
+;
+   MOVE  AC1,R%AA
+   PBOUT%
+;
+   POP   H
+   POP   D
+   POP   B
+   POP   PSW
+   RET
+;
+;=============== INPUT CHAR
+; (O) A  : CHAR
+INPCHR:
+   PUSH  B
+   PUSH  D
+   PUSH  H
+;
+   PBIN%
+   MOVE  R%AA,AC1
+;
+   POP   H
+   POP   D
+   POP   B
+   RET
+;===================================
+   END

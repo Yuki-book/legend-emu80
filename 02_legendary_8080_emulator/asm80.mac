@@ -1,0 +1,211 @@
+    UNIVERSAL ASM80
+;============ ASM80.MAC
+;
+DEFINE %DW (D16) < <^O377 & <D16>>, <^O377 & <D16>_-8> >
+DEFINE %DB (D08) < <^O377 & <D08>> >
+
+DEFINE %XDW (D16) < EXP %DW D16 >
+DEFINE %XDB (D08) < EXP %DB D08 >
+DEFINE %XDC (STR) <
+    IRPC STR , <
+      IFDIF <STR> <">,<
+        EXP "STR"
+      >
+    >
+>
+DEFINE %XBC (STR) <
+    IRPC STR , <
+      IFIDN <STR> <">,<$SEL=1>
+      IFDIF <STR> <">,<$SEL=0>
+      STOPI 
+    >
+    IFE $SEL ,< %XDB STR >
+    IFN $SEL ,< %XDC STR >
+    PURGE $SEL
+>
+;
+DEFINE DS (SZ) < BLOCK <SZ> >
+
+DEFINE DB (D1 ,D2 ,D3 ,D4) <
+  IFNB <D1> ,< %XBC<D1> >
+  IFNB <D2> ,< %XBC<D2> >
+  IFNB <D3> ,< %XBC<D3> >
+  IFNB <D4> ,< %XBC<D4> >
+>
+DEFINE DW (W1 ,W2 ,W3 ,W4) <
+  IFNB <W1> ,< %XDW<W1> >
+  IFNB <W2> ,< %XDW<W2> >
+  IFNB <W3> ,< %XDW<W3> >
+  IFNB <W4> ,< %XDW<W4> >
+>
+
+;
+;=========================
+;   I8080  OP CODE
+;
+LDA%OP=^O072
+STA%OP=^O062
+LDAX%OP=^O002  ;+RS
+STAX%OP=^O002  ;+RD
+;
+MOV%OP=^O100  ;+D.S
+MVI%OP=^O006  ;+D
+INR%OP=^O004  ;+D
+DCR%OP=^O005  ;+D
+;
+LXI%OP=^O001  ;+R
+LHLD%OP=^O052
+SHLD%OP=^O042
+XCHG%OP=^O353
+SPHL%OP=^O371
+;
+ADD%OP=^O200  ;+S
+ADI%OP=^O306
+ADC%OP=^O210  ;+S
+ACI%OP=^O316  ;
+SUB%OP=^O220  ;+S
+SUI%OP=^O326
+SBB%OP=^O230  ;+S
+SBI%OP=^O336  ;
+CMP%OP=^O270  ;+S
+CPI%OP=^O376
+;
+INX%OP=^O003  ;+R
+DCX%OP=^O003  ;+R
+DAD%OP=^O001  ;+R
+;
+ANA%OP=^O240  ;+S
+ANI%OP=^O346
+ORA%OP=^O260  ;+S
+ORI%OP=^O366
+XRA%OP=^O250  ;+S
+XRI%OP=^O356
+CMA%OP=^O057
+;
+RLC%OP=^O007
+RAL%OP=^O027
+RRC%OP=^O017
+RAR%OP=^O037
+;
+PCHL%OP=^O351
+JMP%OP=^O303
+JNZ%OP=^O302
+JZ%OP=^O312
+JNC%OP=^O322
+JC%OP=^O332
+JP%OP=^O362
+JM%OP=^O372
+;
+PUSH%OP=^O305
+POP%OP=^O301
+XTHL%OP=^O343
+;
+CALL%OP=^O315
+CNZ%OP=^O304
+CZ%OP=^O314
+CNC%OP=^O324
+CC%OP=^O334
+CP%OP=^O364
+CM%OP=^O374
+;
+RET%OP=^O311
+RNZ%OP=^O300
+RZ%OP=^O310
+RNC%OP=^O320
+RC%OP=^O330
+RP%OP=^O360
+RM%OP=^O370
+;
+IN%OP=^O333
+OUT%OP=^O323
+;
+CMC%OP=^O077
+STC%OP=^O067
+NOP%OP=^O000
+HLT%OP=^O166
+;========================= 8080 OP
+DEFINE OP1(OP80) <<UUO1,,OP80>>
+DEFINE OP2(OP80) <<UUO2,,OP80>>
+DEFINE OP3(OP80) <<UUO3,,OP80>>
+;
+DEFINE INR (rd) < EXP OP1(INR%OP+rd_3) >
+DEFINE DCR (rd) < EXP OP1(DCR%OP+rd_3) >
+DEFINE MOV (rd,rs)  < EXP OP1(MOV%OP+rd_3+rs) >
+DEFINE MVI (rd,imd) < EXP OP2(MVI%OP+rd_3),%DB(imd) >
+;
+DEFINE LDA (adr)   < EXP OP3(LDA%OP),%DW(adr) >
+DEFINE STA (adr)   < EXP OP3(STA%OP),%DW(adr) >
+DEFINE LDAX (rs)  < EXP OP1(LDAX%OP+<rs+1>_3) >
+DEFINE STAX (rd)  < EXP OP1(STAX%OP+<rd>_3) >
+;
+DEFINE LXI (rr,n16) < EXP OP3(LXI%OP+rr_3),%DW(n16) >
+DEFINE LHLD (adr)   < EXP OP3(LHLD%OP), %DW(adr)>
+DEFINE SHLD (adr)   < EXP OP3(SHLD%OP), %DW(adr)>
+DEFINE XCHG < EXP OP1(XCHG%OP) >
+DEFINE SPHL < EXP OP1(SPHL%OP) >
+;
+DEFINE ADD (rs)  < EXP OP1(ADD%OP+rs) >
+DEFINE ADC (rs)  < EXP OP1(ADC%OP+rs) >
+DEFINE ADI (imd) < EXP OP2(ADI%OP),%DB(imd) > 
+DEFINE ACI (imd) < EXP OP2(ACI%OP),%DB(imd) >
+DEFINE SUB (rs)  < EXP OP1(SUB%OP+rs) >
+DEFINE SBB (rs)  < EXP OP1(SBB%OP+rs) >
+DEFINE SUI (imd) < EXP OP2(SUI%OP),%DB(imd) >
+DEFINE SBI (imd) < EXP OP2(SBI%OP),%DB(imd) >
+DEFINE CMP (rs)  < EXP OP1(CMP%OP+rs) >
+DEFINE CPI (imd) < EXP OP2(CPI%OP),%DB(imd) > 
+;
+DEFINE INX (rr) < EXP OP1(INX%OP+<rr>_3) >
+DEFINE DCX (rr) < EXP OP1(DCX%OP+<rr+1>_3) >
+DEFINE DAD (rr) < EXP OP1(DAD%OP+<rr+1>_3) >
+;
+DEFINE ANA (rs)  < EXP OP1(ANA%OP+rs) >
+DEFINE ANI (imd) < EXP OP2(ANI%OP),%DB(imd) > 
+DEFINE ORA (rs)  < EXP OP1(ORA%OP+rs) >
+DEFINE ORI (imd) < EXP OP2(ORI%OP),%DB(imd) > 
+DEFINE XRA (rs)  < EXP OP1(XRA%OP+rs) >
+DEFINE XRI (imd) < EXP OP2(XRI%OP),%DB(imd) > 
+DEFINE CMA       < EXP OP1(CMA%OP) >
+;
+DEFINE RLC       < EXP OP1(RLC%OP) >
+DEFINE RAL       < EXP OP1(RAL%OP) >
+DEFINE RRC       < EXP OP1(RRC%OP) >
+DEFINE RAR       < EXP OP1(RAR%OP) >
+;
+DEFINE PCHL      < EXP OP1(PCHL%OP) >
+DEFINE JMP (adr) < EXP OP3(JMP%OP), %DW(adr)>
+DEFINE JNZ (adr) < EXP OP3(JNZ%OP), %DW(adr)>
+DEFINE JZ  (adr) < EXP OP3(JZ%OP) , %DW(adr)>
+DEFINE JNC (adr) < EXP OP3(JNC%OP), %DW(adr)>
+DEFINE JC  (adr) < EXP OP3(JC%OP) , %DW(adr)>
+DEFINE JP  (adr) < EXP OP3(JP%OP) , %DW(adr)>
+DEFINE JM  (adr) < EXP OP3(JM%OP) , %DW(adr)>
+;
+DEFINE PUSH (rp) < EXP OP1(PUSH%OP+rp_3) >
+DEFINE POP  (rp) < EXP OP1(POP%OP+rp_3) >
+DEFINE XTHL      < EXP OP1(XTHL%OP) >
+;
+DEFINE CALL (adr) < EXP OP3(CALL%OP), %DW(adr)>
+DEFINE CNZ  (adr) < EXP OP3(CNZ%OP) , %DW(adr)>
+DEFINE CZ   (adr) < EXP OP3(CZ%OP)  , %DW(adr)>
+DEFINE CNC  (adr) < EXP OP3(CNC%OP) , %DW(adr)>
+DEFINE CC   (adr) < EXP OP3(CC%OP)  , %DW(adr)>
+DEFINE CP   (adr) < EXP OP3(CP%OP)  , %DW(adr)>
+DEFINE CM   (adr) < EXP OP3(CM%OP)  , %DW(adr)>
+DEFINE RET  (adr) < EXP OP1(RET%OP) >
+DEFINE RNZ  (adr) < EXP OP1(RNZ%OP) >
+DEFINE RZ   (adr) < EXP OP1(RZ%OP)  >
+DEFINE RNC  (adr) < EXP OP1(RNC%OP) >
+DEFINE RC   (adr) < EXP OP1(RC%OP)  >
+DEFINE RP   (adr) < EXP OP1(RP%OP)  >
+DEFINE RM   (adr) < EXP OP1(RM%OP)  >
+;
+DEFINE IN   (aio) < EXP OP2(IN%OP)  ,%DB(aio) >
+DEFINE OUT  (aio) < EXP OP2(OUT%OP) ,%DB(aio) >
+;
+DEFINE CMC     < EXP OP1(CMC%OP) >
+DEFINE STC     < EXP OP1(STC%OP) >
+DEFINE NOP     < EXP OP1(NOP%OP) >
+DEFINE HLT     < EXP OP1(HLT%OP) >
+;========================================
+    END

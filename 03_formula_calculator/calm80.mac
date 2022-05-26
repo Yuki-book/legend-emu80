@@ -1,0 +1,343 @@
+   TITLE   CALM80 - CALCULATOR MAIN
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   ENTRY   MAIN80,ERROUT
+   EXTERN  STACK,STKINIT,CSTKB,CSTKE
+   EXTERN  PORTINIT
+   EXTERN  OUTSTR,INPTTY
+   EXTERN  BINTDEC,BINTHEX,DECTBIN
+   EXTERN  STKPOP,STKPUSH
+   EXTERN  IADD,ISUB,IMUL,IDIV,IMOD,INEG
+   EXTERN  BUFINP,BUFOUT
+   SALL
+   RADIX   10
+;==================================
+COMMENT *
+    --------- ---- -- --------
+    COPYRIGHT 2022 BY Y.TAKASE
+    --------- ---- -- --------
+*
+;==================================
+MAIN80:
+   LXI   SP,STACK
+   CALL  PORTINIT  ; PORT INIT
+   LXI   H,CSTKB
+   LXI   D,CSTKE
+   CALL  STKINIT   ; CSTK INIT
+;--
+   LXI   D,MSGBGN
+   CALL  OUTSTR
+LOOP:
+   MVI   C,SZBUFI
+   LXI   H,BUFINP
+   LXI   D,PROMT
+   CALL  INPTTY
+;
+   LXI   H,BUFINP
+   CALL  TKNINI
+   CALL  TKNGET    ; A : TOKEN
+   STA   TOKEN
+   CPI   TKCR
+   JZ    LPEX
+;
+   CALL  EXPR      ; EXPRESSION
+   LDA   TOKEN
+   CPI   TKCR
+   JNZ   ERSLEX
+   CALL  STKPOP
+   JNZ   ERROUT
+   CALL  OUTANS
+   JMP   LOOP
+LPEX:
+   LXI   D,MSGEXT
+   CALL  OUTSTR
+;
+STOP:
+   HLT
+ERSLEX:
+   MVI   A,ERLA
+   JMP   ERROUT
+;=============== ERROR OUTPUT
+ERROUT:
+   MOV    B,A
+   LXI    D,MSERSU  ; STACK UNDERFLOW
+   ANI    ERSU
+   JNZ    ERR99
+   LXI    D,MSERSO  ; STACK OVERFLOW
+   MOV    A,B
+   ANI    ERSO
+   JNZ    ERR99
+   LXI    D,MSERZD  ; ZERO DIVIDE
+   MOV    A,B
+   ANI    ERZD
+   JNZ    ERR99
+   LXI    D,MSEROV  ; ZOVERFLOW
+   MOV    A,B
+   ANI    EROV
+   JNZ    ERR99
+   LXI    D,MSERLA  ; LEXICAL
+   MOV    A,B
+   ANI    ERLA
+   JNZ    ERR99
+   LXI    D,MSERSA  ; SYNTACTIC
+   MOV    A,B
+   ANI    ERSA
+   JNZ    ERR99
+   LXI    D,MSOTHR
+ERR99:
+   CALL   OUTSTR
+   JMP    STOP
+;
+MSERSU: DB ".. STACK UNDERFLOW !"  ,CHCR,CHLF,0
+MSERSO: DB ".. STACK OVERFLOW !"   ,CHCR,CHLF,0
+MSERZD: DB ".. ZERO DIVIDE !"      ,CHCR,CHLF,0
+MSEROV: DB ".. CALC OVERFLOW !"    ,CHCR,CHLF,0
+MSERLA: DB ".. LEXICAL ERROR !"    ,CHCR,CHLF,0
+MSERSA: DB ".. SYNTACTIC ERROR !"  ,CHCR,CHLF,0
+MSOTHR: DB ".. ERROR !"            ,CHCR,CHLF,0
+;
+PROMT:  DB  "? ",0
+MSGBGN:
+    DB "Formula calculator start!",CHCR,CHLF,0
+MSGANS:
+    DB  CHTAB,CHTAB,"ANSER=",0
+MSGEXT:
+    DB "Goodbye",CHCR,CHLF,0
+;
+;=============== OUTPUT ANSER
+; (I) HL : VALUE
+;
+OUTANS:
+   LXI    D,MSGANS
+   CALL   OUTSTR  
+   LXI    D,BUFOUT
+   PUSH   D
+   CALL   BINTDEC
+   MVI    A," "
+   STAX   D
+   INX    D
+   MVI    A,"["
+   STAX   D
+   INX    D
+   CALL   BINTHEX
+   MVI    A,"]"
+   STAX   D
+   INX    D
+   MVI    A,CHCR
+   STAX   D
+   INX    D
+   MVI    A,CHLF
+   STAX   D
+   INX    D
+   XRA    A
+   STAX   D
+   POP    D
+   CALL   OUTSTR
+   RET
+;
+;
+;=================================
+;== SYNTACTIC ANALYSIS LIB
+;
+;===============
+;
+TOKEN: DB  0   ; TOKEN CODE
+;
+;=============== CALL [HL]
+XCALL:
+   PCHL
+;=============== EXPRESSION EXEC
+EXPR:
+   CALL  TERM    ; LEFT SIDE
+EXPRLP:          ;-------------
+   LDA   TOKEN
+   LXI   H,IADD
+   CPI   OPADD   ;  +
+   JZ    EXPR1
+   LXI   H,ISUB
+   CPI   OPSUB   ;  -
+   JZ    EXPR1
+   RET
+EXPR1:
+   PUSH  H
+   CALL  TKNGET
+   STA   TOKEN
+   CALL  TERM    ; RIGHT SIDE
+   POP   H
+   CALL  XCALL   ; CALL [HL]
+   JNZ   ERROUT
+   JMP   EXPRLP
+;=============== TERM EXEC
+TERM:
+   CALL  FACT    ; LEFT SIDE
+TERMLP:          ;-------------
+   LDA   TOKEN
+   LXI   H,IMUL
+   CPI   OPMUL   ;  *
+   JZ    TERM1
+   LXI   H,IDIV
+   CPI   OPDIV   ;  /
+   JZ    TERM1
+   LXI   H,IMOD
+   CPI   OPMOD   ;  %
+   JZ    TERM1
+   RET
+TERM1:
+   PUSH  H
+   CALL  TKNGET
+   STA   TOKEN
+   CALL  FACT    ; RIGHT SIDE
+   POP   H
+   CALL  XCALL   ; CALL [HL]
+   JNZ   ERROUT
+   JMP   TERMLP
+;=============== FACT EXEC
+FACT:
+   LDA   TOKEN
+   CPI   OPSUB
+   JZ    EXNEG
+   CALL  PRIM    ; 
+   RET
+;--------------- NEGATIVE
+EXNEG:
+   CALL  TKNGET
+   STA   TOKEN
+   CALL  PRIM    ;
+   CALL  INEG
+   JNZ   ERROUT
+   RET
+;=============== PRIM EXEC
+PRIM:
+   LDA   TOKEN
+   CPI   TKNUM
+   JZ    EXNUM
+   CPI   OPLPA    ; "("
+   JZ    EXLPA
+   JMP   ERSSYN
+;--------------- NUMBERS
+EXNUM:
+   LHLD  YYVAL
+   CALL  STKPUSH
+   JNZ   ERROUT   ; ABEND
+   CALL  TKNGET
+   STA   TOKEN
+   RET
+;--------------- LEFT PARENTHESES
+EXLPA:           ; "("
+   CALL  TKNGET
+   STA   TOKEN
+   CALL  EXPR    ; EXPRESSION
+   LDA   TOKEN
+   CPI   OPRPA   ; ")"
+   JNZ   ERSSYN
+   CALL  TKNGET
+   STA   TOKEN
+   RET
+;
+ERSSYN:
+   MVI  A,ERSA
+   JMP  ERROUT
+;=================================
+;== LEXICAL ANALYSIS LIB
+;
+;=============== TOKEN GET INITIAL
+; (I) HL : STRING BUFF
+TKNINI:
+   SHLD   SPTR
+   RET
+;
+;=============== TOKEN GET
+; (O) A     : TOKEN CODE
+TKNGET:
+   PUSH   D
+   PUSH   H
+;
+   LHLD   SPTR
+   CALL   TKNSKIP  ; TOKEN SKIP
+   SHLD   SPTR     ; HL : SRC PTR
+;
+   MOV    A,M
+   CPI    CHCR     ; ? CR
+   MVI    A,TKCR
+   JZ     TKNG9
+;
+   XCHG
+   CALL   DECTBIN   ; ? NUMERIC DEC
+   JC     TKNG2
+   JNZ    ERROUT
+   SHLD   YYVAL
+   XCHG
+   SHLD   SPTR
+   MVI    A,TKNUM
+   JMP    TKNG9
+TKNG2:
+   XCHG
+   MOV    C,M      ; C : CHAR
+   INX    H
+   SHLD   SPTR
+   CALL   ISOP     ; ? IS OPERATOR
+   JNZ    TKNG9
+   MOV    A,C      ; (N) OTHER TOKEN
+TKNG9:
+   POP    H
+   POP    D
+   RET
+;
+;=============== TOKEN SKIP
+; (I) HL : SOURCE PTR
+; (O) HL : SOURCE PTR (UPDATE)
+TKNSKIP:
+    MOV   A,M
+    CALL  ISSKIP
+    RNZ
+    INX   H
+    JMP   TKNSKIP
+;
+;=============== IS SPACE OR TAB
+; (I) A  : SOURCE CHAR
+; (O) ZF : 1 (YES) / 0 (NO)
+;
+ISSKIP:
+    CPI   CHTAB
+    RZ
+    CPI   CHSP
+    RZ
+    RET
+;
+;=============== IS OPERATOR
+; (I) C  : CHAR
+; (O) A  : TOKEN CODE
+;     ZF : 0 (OK) / 1 (NG)
+ISOP:
+    PUSH  H
+    PUSH  B
+;
+    MOV   A,C
+    STA   OPX   ; SEARCH SENTINEL
+    LXI   H,OPTBL
+    MVI   C,OPBSC ; TOKEN CODE
+ISOPLP:
+    CMP   M       ; A == M
+    JZ    ISOP1   ;  (Y)
+    INX   H
+    INR   C
+    JMP   ISOPLP
+ISOP1:
+    MOV   A,C       ;  A  : TOKEN CODE
+    CPI   OPBSC+OPX-OPTBL ; ? SENTINEL
+    JNZ   ISOP9
+    XRA   A         ; (Y) A : 00
+ISOP9:
+    POP   B
+    POP   H
+    ANA   A         ; ZF SET
+    RET
+;
+OPTBL:
+     DB  "*/%+-()"
+OPX: DB 0           ; SENTINEL
+;
+YYVAL:  DW  0
+SPTR:   DW  0   ; TOKEN SOURCE PTR
+;==================================
+   END

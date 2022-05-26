@@ -1,0 +1,59 @@
+   TITLE   CALIOP - CALC I/O PROCESSOR 
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   SEARCH  MONSYM
+   ENTRY   PORTINIT,OUTCHR,INPCHR
+   SALL
+   RADIX   10
+;===================
+PORTCTL=16    ; PORT CONTROL
+PORTDAT=17    ; PORT DATA
+;=============== PORT INIT
+PORTINIT:
+   MVI   A,3
+   OUT   PORTCTL
+   MVI   A,8
+   OUT   PORTCTL
+   RET
+;=============== OUTPUT CHAR
+; (I) A  : CHAR
+OUTCHR:
+   PUSH  PSW
+   PUSH  B
+   PUSH  D
+   PUSH  H
+;
+   MOV   C,A
+OUTCLP:
+   IN    PORTCTL  ; STATUS
+   ANI   2
+   JZ    OUTCLP
+   MOV   A,C
+   OUT   PORTDAT
+;
+   POP   H
+   POP   D
+   POP   B
+   POP   PSW
+   RET
+;
+;=============== INPUT CHAR
+; (O) A  : CHAR
+INPCHR:
+   PUSH  B
+   PUSH  D
+   PUSH  H
+;
+   MOV   C,A
+INPCLP:
+   IN    PORTCTL  ; STATUS
+   ANI   1
+   JZ    INPCLP
+   IN    PORTDAT
+;
+   POP   H
+   POP   D
+   POP   B
+   RET
+;===================================
+   END

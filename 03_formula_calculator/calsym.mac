@@ -1,0 +1,50 @@
+    UNIVERSAL CALSYM
+;============ CALSYM.MAC
+    SEARCH  ASM80,SYM80
+;==================================
+RADIX 10
+;
+;------------------------- CONST
+;
+CHDEL=:127 ; DEL   (7FH)
+CHTAB=:9   ; TAB   (09H)
+CHCR=:13   ; CR    (0DH)
+CHLF=:10   ; LF    (0AH)
+CHSP=:32   ; SPACE (20H)
+;
+CX00=:0    ;       (00H)
+CX01=:1    ;       (01H)
+CX0F=:15   ;       (0FH)
+CX60=:96   ;       (60H)
+CX80=:128  ;       (80H)
+CX7F=:127  ;       (7FH)
+CXF0=:240  ;       (F0H)
+CXFE=:254  ;       (FEH)
+CXFF=:255  ;       (FFH)
+;
+;------------------------- TOKEN CODE
+OPBSC=:CX80
+OPMUL=:OPBSC+0   ; "*"
+OPDIV=:OPBSC+1   ; "/"
+OPMOD=:OPBSC+2   ; "%"
+OPADD=:OPBSC+3   ; "+"
+OPSUB=:OPBSC+4   ; "-"
+OPLPA=:OPBSC+5   ; "("
+OPRPA=:OPBSC+6   ; ")"
+TKCR=:CXFE     ; CR
+TKNUM=:CXFF    ; NUMBERS (YYVAL)
+;
+;----------------------; ERROR CODE
+ERSU=:^O001         ; STACK UNDERFLOW
+ERSO=:^O002         ; STACK OVERFLOW
+ERZD=:^O004         ; ZERO DIVIDE
+EROV=:^O010         ; OVERFLOW
+ERLA=:^O020         ; LEXICAL
+ERSA=:^O040         ; SYNTACTIC
+;----------------------
+SZBUFI=:250     ; SIZE BUFF INPUT  
+SZBUFO=:128     ; SIZE BUFF OUTPUT  
+SZCSTK=:256     ; SIZE CALC STACK  
+;
+;==================================
+   END

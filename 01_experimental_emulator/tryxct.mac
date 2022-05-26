@@ -1,0 +1,75 @@
+    TITLE   TRYXCT
+    SEARCH  MONSYM,MACSYM
+    EXTERN  MAIN80
+    LALL
+UUO=^O001_9
+R%A=1     ; AC1
+R%PC=12   ; AC12
+;-------------------- OP
+OP%LDA=^O072
+OP%CMA=^O057
+OP%STA=^O062
+OP%HLT=^O166
+;--------------------
+;  UUO VECTOR
+   RADIX  8
+   LOC    40
+UUOVCT:
+   Z                ; UUO OP
+   JSP    R%PC,EMU80
+;--------------------
+; 8080 Emulator Main
+   LOC 400
+START:
+   RESET%
+   MOVE   P,[IOWD STK.N,STK]
+   JRST   MAIN80   ; 8080 Program
+STOP:
+   HALTF%
+   JUMPA  START
+;--------------------
+EMU80: 
+   HLRZ   15,UUOVCT
+   CAIE   15,UUO          ; UUO OP
+    JRST  E.EXIT          ; N: exit
+   HRRZ   15,UUOVCT       ; Y: OP80
+E.EXEC:
+   CAIN   15,OP%LDA
+    JRST     EX%LDA
+   CAIN   15,OP%CMA
+    JRST     EX%CMA
+   CAIN   15,OP%STA
+    JRST     EX%STA
+   CAIN   15,OP%HLT
+    JRST     EX%HLT
+   MOVEI  1,"?"
+   PBOUT%         ; Error
+E.EXIT:
+   JRSTF   (R%PC)
+;-------------------- XCT80
+EX%LDA:
+   MOVE   14,1(R%PC)   ; ADR H
+   LSH    14,8
+   IOR    14,0(R%PC)   ; ADR L
+   ADDI   R%PC,2
+   MOVE   R%A,(14)
+   JRST   E.EXIT
+EX%CMA:
+   SETCA  R%A,
+   ANDI   R%A,^O377
+   JRST   E.EXIT
+EX%STA:
+   MOVE   14,1(R%PC)   ; ADR H
+   LSH    14,8
+   IOR    14,0(R%PC)   ; ADR L
+   ADDI   R%PC,2
+   MOVEM  R%A,(14) 
+   JRST   E.EXIT
+EX%HLT:
+   JRST   STOP
+;
+STK.N=100
+STK: BLOCK   STK.N
+;
+     LIT
+     END     START

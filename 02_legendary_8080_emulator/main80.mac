@@ -1,0 +1,24 @@
+    TITLE   MAIN80
+    SEARCH  ASM80,SYM80
+    ENTRY   MAIN80,END80
+   .REQUIRE EMU80
+;=========================
+    SALL
+    RADIX 10
+;-------------------- MAIN
+MAIN80:
+    XRA   A
+    MVI   C,10
+LOOP:
+    ADD   C
+    DCR   C
+    JNZ   LOOP
+    STA   SUM
+EXIT:
+    HLT
+SUM:
+    DB    0
+END80:
+;-- ASCIZ PROG NAME --
+    ASCIZ /SUM.OBJ/   
+    END  

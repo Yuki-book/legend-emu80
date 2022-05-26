@@ -1,0 +1,137 @@
+   TITLE    OBJ80 - Object 8080 FILE OUTPUT
+;========== OBJ80.MAC
+   SEARCH   MONSYM,MACSYM
+   .REQUIRE SYS:MACREL
+   STDAC.   ;DEFINE STANDARD ACs
+   ENTRY    OBJ80
+   EXTERN   MAIN80,END80
+;
+;-----------------------------------
+OBJ80:
+   MOVEI  Q1,MAIN80
+   MOVEM  Q1,ADBGN
+   MOVEI  Q1,END80
+   MOVEM  Q1,ADEND
+;
+   MOVEI  CX,[EXP ADBGN,ADEND]
+   CALL   MSGSTART
+;
+   CALL   PTOPEN   ; OPEN
+;
+   MOVE   Q1,ADBGN
+   SUB    Q1,ADEND
+   HRLZ   P6,Q1    ; -CNT,,0
+;
+LOOP:
+   MOVE   Q1,MAIN80(P6)
+   ANDI   Q1,^O377
+   MOVEM  Q1,CODE
+   MOVEM  P6,CNT
+   MOVEI  CX,[EXP CODE,CNT]
+   CALL   PTPUT   ; PUT
+   AOBJN  P6,LOOP
+;
+   CALL   PTCLOSE
+   CALL   MSGEND
+;
+   RET
+;----------------------------
+MSGSTART:
+   HRROI  T1,MSTART
+   PSOUT%
+;
+   HRRO   T1,@1(CX)   ; SAVE NAME ASCIZ
+   PSOUT%
+   MOVE   T1,[POINT 7,LINE]
+   MOVE   Q1,[POINT 7,[ASCIZ /  S: /]]
+   REPEAT  5,<
+     ILDB    Q3,Q1
+     IDPB    Q3,T1 >
+   MOVE   T2,@0(CX)      ; ADBGN
+   MOVE   T3,[FLD(5,NO%COL)!NO%LFL!NO%ZRO!^D8]
+   NOUT%
+    EJSHLT
+   MOVE   Q1,[POINT 7,[ASCIZ /  E: /]]
+   REPEAT  5,<
+     ILDB    Q3,Q1
+     IDPB    Q3,T1 >
+   MOVE   T2,@1(CX)      ; ADEND
+   SUBI   T2,1
+   MOVE   T3,[FLD(5,NO%COL)!NO%LFL!NO%ZRO!^D8]
+   NOUT%
+    EJSHLT
+   MOVE    Q1,[POINT 7,CRLF]
+   REPEAT  3,<
+     ILDB    Q3,Q1
+     IDPB    Q3,T1 >
+   MOVE    T1,[POINT 7,LINE]
+   PSOUT%
+   RET
+;----------------------------
+MSGEND:
+   HRROI  T1,MEND
+   PSOUT%
+   RET
+;------------------------* OPEN
+PTOPEN:
+   MOVE   T1,[GJ%FOU+GJ%SHT]
+   HRRO   T2,ADEND   ; SAVE NAME ASCIZ
+   GTJFN%
+    EJSHLT
+   MOVEM  T1,OUTJFN
+   MOVE   T2,[FLD(7,OF%BSZ)+OF%WR]
+   OPENF%            ; OPEN OUTPUT FILE
+    EJSHLT
+   RET
+;------------------------* PUT
+PTPUT:
+   MOVE   T1,[POINT 7,LINE]
+   MOVE   T2,@0(CX)      ; CODE
+   MOVE   T3,[FLD(3,NO%COL)!NO%LFL!NO%ZRO!^D8]
+   NOUT%
+    EJSHLT
+   MOVEI  Q1,","
+   HLRE   Q2,@1(CX)      ; -CNT
+   AOSL   F,Q2
+    MOVEI Q1,"$"
+   IDPB   Q1,T1
+   MOVE   Q2,@1(CX)      ; CNT
+   ANDI   Q2,7
+   MOVE   Q1,[POINT 7,CRLF]
+   CAIE   Q2,7
+   MOVE   Q1,[POINT 7,NULL]
+   REPEAT  3,<
+    ILDB    Q3,Q1
+    IDPB    Q3,T1 >
+;
+   MOVE   T1,OUTJFN
+   MOVE   T2,[POINT 7,LINE]
+   MOVEI  T3,0
+   SOUT%               ; FILE WRITE
+    EJSHLT
+   RET
+;------------------------* CLOSE
+PTCLOSE:
+   MOVE  T1,OUTJFN
+   CLOSF%            ; CLOSE OUTPUT FILE
+    EJSHLT
+   RET
+;================================
+CRLF: BYTE (7) .CHCRT , .CHLFD, .CHNUL
+NULL: BYTE (7) .CHNUL , .CHNUL, .CHNUL
+LINE: BLOCK  100
+MSTART:
+   ASCIZ  /OBJ8080 START
+/
+MEND:
+   ASCIZ  /DONE/
+;
+ADBGN:  EXP 0  ; MAIN80
+ADEND:  EXP 0  ; END80
+CNT:    EXP 0  ; COUNT
+CODE:   EXP 0  ; 8080 CODE
+;
+OUTJFN:  BLOCK 1
+;
+    LIT
+    END

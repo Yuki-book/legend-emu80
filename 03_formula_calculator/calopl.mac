@@ -1,0 +1,661 @@
+   TITLE   CALOPL - CALC OPERATION LIBRARY
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   ENTRY   STKINIT,STKPUSH,STKPOP
+   ENTRY   IADD,ISUB,IMUL,IDIV,IMOD,INEG
+   ENTRY   DECTBIN,BINTHEX,BINTDEC
+   SALL
+   RADIX   10
+;=================================
+;== CALC LIB
+;=================================
+;
+;=================================
+;== COMMON ROUTINE
+;
+;=============== HL COMPLEMENT
+; (I) HL :  VALUE
+; (O) HL : -VALUE
+HLCMX:
+   PUSH  PSW
+   MOV   A,L
+   CMA
+   MOV   L,A
+   MOV   A,H
+   CMA
+   MOV   H,A
+   INX   H
+   POP   PSW
+   RET
+;=============== HL COMPLEMENT (CHECK)
+; (I) HL :  VALUE
+; (O) HL : -VALUE
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+HLCM:
+   PUSH  B
+   MVI   B,0    ; B : RC
+   MOV   A,H
+   ORA   L
+   JZ    HLCM9
+   MOV   C,H    ; C : BEFORE Sign
+   CALL  HLCMX  ; HL COMPLEMENT
+   MOV   A,H    ; A: AFTER Sign
+   XRA   C      ; Sign BE xor AF
+   JM    HLCM9
+   MVI   B,EROV
+HLCM9:
+   MOV   A,B
+   ANA   A
+   POP   B
+   RET
+;=============== HL ABSOLUTE
+;  (I) HL :  VALUE
+;  (O) HL :  VALUE or -VALUE
+;  (O) B  :  S0000000 Sign
+;  (O) A  :  RC (00=OK ,others ERR)
+;      ZF :      1=OK ,0=ERR
+HLABS:
+   MVI   A,CX80
+   ANA   H
+   MOV   B,A    ; Sign or Zero
+   CM    HLCM   ; HL COMPLEMENT
+   ANA   A      ; A : RC
+   RET
+;=============== HL LEFT SHIFT
+; (I) HL :  VALUE
+; (O) HL :  VALUE<<1
+HLLSFT:
+   MOV   A,L
+   RAL         ; CF <- L <- CF
+   MOV   L,A
+   MOV   A,H
+   RAL         ; CF <- H <- CF
+   MOV   H,A
+   RET
+;=============== HL RIGHT SHIFT
+; (I) HL :  VALUE
+; (O) HL :  VALUE>>1
+HLRSFT:
+   MOV   A,H
+   RAR         ; CF -> H -> CF
+   MOV   H,A
+   MOV   A,L
+   RAR         ; CF -> L -> CF
+   MOV   L,A
+   RET
+;
+;==========================================
+STKEP: DW  0        ; STACK END   POINT
+STKTP: DW  0        ; STACK TOP   POINT
+STKBP: DW  0        ; STACK BEGIN POINT
+;
+;=============== STACK INIT
+; (I)  HL : STACK BEGIN ADR
+; (i)  DE : STACK END   ADR
+STKINIT:
+   SHLD  STKBP
+   SHLD  STKTP
+   XCHG
+   SHLD  STKEP
+   XCHG
+   RET
+;=============== STACK PUSH
+; (I) HL : VALUE
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+;
+STKPUSH:
+   PUSH  D
+   PUSH  H
+   CALL  STKOVCK ; OVER CHECK
+   JNC   STKPU1
+   MVI   A,ERSO
+   JMP   STKPU9
+STKPU1:   
+   XCHG          ; DE : VALUE
+   LHLD  STKTP
+   DCX   H
+   MOV   M,D
+   DCX   H
+   MOV   M,E
+   SHLD  STKTP
+   XRA   A
+STKPU9:
+   POP   H
+   POP   D
+   ANA   A
+   RET
+;========= STACK OVER CHECK
+; (O) CF=1 OVER / CF=0 OK
+STKOVCK:
+   PUSH  H
+   LHLD  STKEP
+   XCHG         ; DE : STKEP
+   LHLD  STKTP  ; HL : STKTP
+   DCX   H
+   DCX   H
+   MOV   A,L
+   SUB   E
+   MOV   A,H
+   SBB   D     ; HL-DE : CF SET
+   POP   H
+   RET
+;=============== STACK POP
+; (O) HL : VALUE
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+STKPOP:
+   PUSH  D
+   CALL  STKUDCK ; UNDER CHECK
+   JNC   STKPO1
+   MVI   A,ERSU
+   JMP   STKPO9
+STKPO1:   
+   LHLD  STKTP
+   MOV   E,M
+   INX   H
+   MOV   D,M
+   INX   H
+   SHLD  STKTP
+   XCHG         ; HL : VALUE
+   XRA   A
+STKPO9:
+   POP   D
+   ANA   A
+   RET
+;========= STACK UNDER CHECK
+; (O) CF=1 UNDER / CF=0 OK
+STKUDCK:
+   LHLD  STKBP
+   XCHG         ; DE : STKBP
+   LHLD  STKTP
+   MOV   A,L
+   SUB   E
+   MOV   A,H
+   SBB   D     ; HL-DE : CF SET
+   CMC
+   RET
+;
+;=============== INTEGER ADD Top = 2nd + 1st
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+IADD:
+   CALL  STKPOP
+   RNZ           ; ABEND
+   XCHG          ; DE : 1st
+   CALL  STKPOP  ; HL : 2nd
+   RNZ           ; ABEND
+;
+   CALL  XADD    ; HL=HL+DE
+   MOV   B,A
+   CALL  STKPUSH
+   RNZ           ; ABEND
+   MOV   A,B
+   ANA   A
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+;
+;=============== EXTENDED ADD HL = HL + DE
+; (I) HL : VAL2
+; (I) DE : VAL1
+; (O) HL : VAL2 + VAL1
+; (O) A  : RC (00=OK ,others ERR)
+;
+XADD:
+   MOV   A,H
+   ANI   CX80    ; A.7 : SIGN H (CF=0)
+   RAR           ; 
+   MOV   B,A     ; B:SIGN |0|H|
+   MOV   A,D
+   ANI   CX80    ; A.7 : SIGN D
+   ORA   B       ; CF=0
+   RAR           ; 
+   MOV   B,A     ; B:SIGN |0|D|H|
+;
+   DAD   D       ; HL : VAL2 + VAL1
+;
+   MOV   A,H
+   ANI   CX80    ; A.7 : SIGN HL+DE
+   ORA   B       ; A:SIGN |A|D|H|
+;
+   MVI   B,0     ; OV=0
+   CPI   CX60    ; 0110 0000
+   JZ    XADOV
+   CPI   CX80    ; 1000 0000
+   JNZ   XADD1
+XADOV:
+   MVI   B,EROV  ; OVERFLOW
+XADD1:
+   MOV   A,B
+   ANA   A
+   RET
+;
+;=============== INTEGER SUB Top = 2nd - 1st
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+ISUB:
+   CALL  STKPOP
+   RNZ           ; ABEND
+   CALL  HLCM    ; HL : -1st
+   RNZ           ; ABEND
+   CALL  STKPUSH
+   RNZ           ; ABEND
+   CALL  IADD
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+;
+;=============== INTEGER NEG Top = - 1st
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+INEG:
+   CALL  STKPOP
+   RNZ           ; ABEND
+   CALL  HLCM    ; HL : -1st
+   RNZ           ; ABEND
+   CALL  STKPUSH
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+;
+;
+;=============== INTEGER MUL Top = 2nd * 1st
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+IMUL:
+   CALL  STKPOP
+   RNZ           ; ABEND
+   XCHG          ; DE : 1st
+   CALL  STKPOP  ; HL : 2nd
+   RNZ           ; ABEND
+;
+   CALL  XMUL    ; HL = HL*DE
+   JZ    IMUL2
+   LXI   H,32767 ; OVER FLOW
+IMUL2:
+   MOV   B,A
+   CALL  STKPUSH ; PRODUCT (1st)
+   RNZ           ; ABEND
+   MOV   A,B
+   ANA   A
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+;
+;=============== EXTENDED MUL HL = HL * DE
+; (I) DE : VAL1
+; (I) HL : VAL2
+; (O) HL : VAL2 * VAL1
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+XMUL:
+   XCHG          
+   CALL  HLABS   
+   RNZ           ; ABEND
+   MOV   C,B     ; C : VAL1 S0000000
+   XCHG          
+   CALL  HLABS   ; B : VAL2 S0000000
+   RNZ           ; ABEND
+   MOV   A,C
+   XRA   B       ; SIGN VAL1 XOR VAL2
+   STA   SIGN
+;
+   MOV   B,D
+   MOV   C,E     ; BC : VAL1
+   XCHG          ; DE : VAL2
+   CALL  BMUL    ; HL:DE = DE * BC
+;
+   CALL  CKOVFL  ; CHECK OVERFLOW
+   RNZ           ; ABEND
+;
+   XCHG          ; HL : DE*BC
+   LDA   SIGN
+   ANA   A       ; Sign or Zero
+   CM    HLCM    ; HL : -HL
+   ANA   A
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+SIGN:  DB  0
+;
+;============== HL:DE CHECK OVERFLOW
+; (I) HL:DE  : VALUE
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+CKOVFL:
+   MVI   B,EROV
+   MOV   A,D
+   ANA   A
+   JM    CKOVF9    ; OVERFLOW (DE<0)
+   MOV   A,H
+   ORA   L
+   JNZ   CKOVF9    ; OVERFLOW (HL<>0)
+   MVI   B,0       ; OV=0
+CKOVF9:
+   MOV   A,B
+   ANA   A
+   RET
+;
+;=============== BASIC MULTIPLY HL:DE = DE * BC
+; (I) DE    : X
+; (I) BC    : Y
+; (O) HL DE : X * Y
+BMUL:
+   LXI   H,0
+   MVI   A,16
+BMULLP:
+   PUSH  PSW
+   MOV   A,E
+   RAR
+   JNC   BMUL1
+   DAD   B       ; HL : HL + BC
+BMUL1:
+   ANA   A       ; CF : 0
+   CALL  HLRSFT  ; HL -> CF
+   XCHG
+   CALL  HLRSFT  ;
+   XCHG          ; CF -> DE
+   POP   PSW
+   DCR   A
+   JNZ   BMULLP
+   RET
+;
+;=============== INTEGER DIV Top = 2nd / 1st
+;=============== INTEGER MOD Top = 2nd % 1st
+; (I) C  : 1=DIV ,2=MOD
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+IDIV:
+   MVI   A,1
+   JMP   DIVMOD
+IMOD:
+   MVI   A,2
+;
+DIVMOD:
+   STA   MODE
+   CALL  STKPOP
+   RNZ           ; ABEND
+   XCHG          ; DE : 1st
+   CALL  STKPOP  ; HL : 2nd
+   RNZ           ; ABEND
+;
+
+   CALL  XDIV    ; HL...DE = HL / DE
+   MOV   B,A     ; B : RC
+   JZ    IDIV2
+   LXI   H,0     ; ZERO DIV
+IDIV2:
+   LDA   MODE
+   DCR   A
+   JZ    IDIV3   ;
+   XCHG          ; HL : MOD
+IDIV3:
+   CALL  STKPUSH ; QUOTIENT or REMAINDER
+   RNZ           ; ABEND
+   MOV   A,B
+   ANA   A
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+MODE:  DB 0
+;
+;=============== EXTENDED DIV_MOD HL...DE = HL / DE
+; (I) DE : VAL1
+; (I) HL : VAL2
+; (O) HL : VAL2 / VAL1
+; (O) DE : VAL2 % VAL1
+; (O) A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+XDIV:
+   MOV   A,E
+   ORA   D
+   MVI   A,ERZD  ; 
+   JZ    XDIV9   ;  --> ZERO DIV
+;
+   XCHG          
+   CALL  HLABS
+   RNZ           ; ABEND
+   MOV   C,B     ; C : VAL1 S0000000
+   XCHG          
+   CALL  HLABS   ; B : VAL2 S0000000
+   RNZ           ; ABEND
+   MOV   A,C
+   XRA   B       ; SIGN VAL1 XOR VAL2
+   STA   SIGN
+;
+   MOV   B,D
+   MOV   C,E     ; BC : VAL1
+   XCHG          ; DE : VAL2
+   CALL  BDIV    ; DE...HL = DE / BC
+;
+   XCHG          ; HL
+   LDA   SIGN
+   ANA   A       ; Sign or Zero
+   CM    HLCM    ; A : RC
+XDIV9:
+   ANA   A
+   RET           ; ZF=1 [OK] / ZF=0 [ERR]
+;
+;=============== BASIC DIVISION DE...HL = DE / BC
+; (I) DE    : X
+; (I) BC    : Y
+; (O) DE    : DIV X / Y
+; (O) HL    : MOD X % Y
+BDIV:
+   MOV   H,B
+   MOV   L,C
+   CALL  HLCMX 
+   MOV   B,H
+   MOV   C,L   ; BC : -Y
+;
+   LXI   H,0
+   MVI   A,16
+BDIVLP:
+   PUSH  PSW
+   ANA   A      ; CF : 0
+   XCHG
+   CALL  HLLSFT
+   XCHG         ;       CF <- DE
+   CALL  HLLSFT ; HL <- CF
+   PUSH  D
+   MOV   D,H
+   MOV   E,L
+   XRA   A      ; CF : 0
+   DAD   B      ; HL : HL + BC
+   JC    BDIV1
+   MOV   H,D
+   MOV   L,E
+BDIV1:
+   POP   D
+   ADC   E
+   MOV   E,A    ; E : E + CF
+   POP   PSW
+   DCR   A
+   JNZ   BDIVLP
+   RET
+;=================================
+;== NUMERIC CONVERSION 
+;
+;=============== DEC STRING TO BIN
+; (I) DE : SOURCE ADR
+; (O) DE : SOURCE ADR (UPDATE)
+;     CF : 0 (NUM) / 1 (NOT NUM)
+;     HL : BINARY VALUE
+;     A  : RC (00=OK ,others ERR)
+;     ZF :      1=OK ,0=ERR
+DECTBIN:
+    LXI   H,0
+    LDAX  D       ; A : CHAR
+    CALL  ISNUM
+    RC            ; NG
+NUMDLP:
+    MOV   B,H
+    MOV   C,L
+    PUSH  D
+    MVI   D,0
+    MOV   E,A
+    XRA   A       ; A=0 
+    DAD   H       ; HL*2
+    RAL           ; (A<<1) <- CF
+    DAD   H       ; HL*4
+    RAL           ; (A<<1) <- CF
+    DAD   B       ; HL*5
+    RAL           ; (A<<1) <- CF
+    DAD   H       ; HL*10
+    RAL           ; (A<<1) <- CF
+    DAD   D       ; HL*10+A
+    RAL           ; (A<<1) <- CF
+    POP   D
+    ANA   A
+    JNZ   NUMER   ; OVERFLOW
+    MOV   A,H
+    ANA   A
+    JM    NUMER   ; OVERFLOW
+    INX   D
+    LDAX  D
+    CALL  ISNUM
+    JNC   NUMDLP
+    XRA   A       ; CF=0 ,ZF=1
+    RET
+NUMER:
+    MVI   A,EROV
+    ANA   A       ; CF=0 ,ZF=0
+    RET
+;
+;=============== IS NUMERIC 0..9
+; (I) A  : CHAR
+; (O) A  : 0..9   / NONE
+;     CF : 0 (OK) / 1 (NG)
+ISNUM:
+    CPI   "0"
+    RC            ; NG
+    CPI   "9"+1
+    CMC
+    RC            ; NG
+    ANI   CX0F    ; CF : 0
+    RET
+;
+;=============== BIN TO HEX STRING
+; (I) HL : VALUE
+;     DE : DST POINTER
+; (O) DE : DST POINTER (UPDATE)
+BINTHEX:
+   PUSH  PSW
+   PUSH  B
+   PUSH  H
+   MVI   C,4
+LPBTH:
+   XRA   A     ; A:=0
+   DAD   H     ; CF:=B7
+   RAL         ; B7
+   DAD   H     ; CF:=B6
+   RAL         ; B76
+   DAD   H     ; CF:=B5
+   RAL         ; B765
+   DAD   H     ; CF:=B4
+   RAL         ; B7654
+   CPI   10    ; IF 0..9
+   JM    NXBTH ;   THEN
+   SUI   10    ;   ELSE  A-10+"A"-"0"
+   ADI   "A"-"0"
+NXBTH:
+   ADI   "0"
+   STAX  D
+   INX   D
+   DCR   C
+   JNZ   LPBTH
+   POP   H
+   POP   B
+   POP   PSW
+   RET
+
+;=============== BIN TO DEC STRING
+; (I) HL : VALUE
+;     DE : DST POINTER
+; (O) DE : DST POINTER (UPDATE)
+BINTDEC:
+   PUSH  PSW
+   PUSH  B
+   PUSH  H
+;
+   MOV   A,H
+   ANA   A
+   JP    BTD1
+   CALL  HLCMX
+   MVI   A,"-"    ; SIGN SET
+   STAX  D
+   INX   D
+BTD1:
+   SHLD  BVAL
+   LXI   H,BASE
+   MVI   B,CXF0   ; ZERO SUP
+BTDLP:          ;====
+   PUSH  D
+   MOV   E,M
+   INX   H
+   MOV   D,M
+   INX   H         ; DE : BASE
+;
+   PUSH  H
+   LHLD  BVAL
+   CALL  BDIGIT    ; C : DIGIT
+   SHLD  BVAL
+   POP   H
+;
+   POP   D
+   CALL  SUPZERO   ; A : DIGIT
+   JZ    BTD2      ;     (SUP)
+   STAX  D
+   INX   D
+BTD2:
+   MOV   A,M
+   ANA   A
+   JNZ   BTDLP ;====
+;
+   POP   H
+   POP   B
+   POP   PSW
+   RET
+;
+BVAL:  DW 0
+BASE:  DW -10000
+       DW -1000
+       DW -100
+       DW -10
+       DW -1
+       DB  0
+;
+;=============== BIN TO DIGIT
+; (I) HL : VALUE
+;     DE : BASE (-10000..-1)
+; (O) HL : VALUE (UPDATE)
+;     C  : DIGIT ("0".."9")
+BDIGIT:
+   MVI   C,"0"-1
+BDTLP:
+   INR   C
+   DAD   D      ; HL:VALUE ,DE:BASE
+   JC    BDTLP
+;
+   XCHG
+   CALL  HLCMX
+   DAD   D      ; HL:VALUE
+;
+   RET
+;
+;=============== SUPPRESS ZERO
+; (I) C  : DIGIT ("0".."9")
+;     B  : ZERO SUPPRESS (MSB 1:YES 0:NO)
+; (O) A  : DIGIT ("0".."9" or 0)
+;     B  : ZERO SUPPRESS (UPDATE)
+SUPZERO:
+   MOV   A,B
+   ADD   B
+   MOV   B,A
+   JNC   SUP5
+;
+   MOV   A,C
+   CPI   "0"
+   JZ    SUP3
+   MVI   B,0    ; ZERO SUP RESET
+   JMP   SUP5
+SUP3:
+   MVI   C,0    ; ZERO SUP
+;
+SUP5:
+   MOV   A,C
+   ANA   A
+   RET
+;
+;==================================
+   END

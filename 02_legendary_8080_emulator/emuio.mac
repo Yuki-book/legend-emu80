@@ -1,0 +1,129 @@
+   TITLE   EMUIO - I/O Emulators
+;========= EMUIO.MAC
+   SUBTTL  ALTAIR IO
+   SEARCH  MONSYM,SYM80
+   ENTRY  PIN,POUT
+   LALL
+   RADIX  8
+;---------------- ALTAIR IO
+SIOAD=020     ; SIO PORT
+S%TDRE=2    ; SIO STATUS TDRE
+S%RDRF=1    ; SIO STATUS RDRF
+;
+TDR:  EXP 0 ,0   ; TRANSMIT DATA REGISTER
+RDR:  EXP 0 ,0   ; RECEIVE  DATA REGISTER
+STAR: EXP 0 ,0   ; STATUS REGISTER
+CMDR: EXP 0 ,0   ; COMMAND REGISTER
+;
+TCT:  EXP 0
+RCT:  EXP 0
+;---------------------------- OUT AC14
+POUT:
+    MOVE    AC1,AC14
+    ANDI    AC1,^B11111100
+    CAIN    AC1,SIOAD
+     JRST   PO%SIO
+POUT9:
+    RETURN
+;
+PO%SIO:
+    MOVE    AC1,AC14
+    ANDI    AC1,^B00000010
+    LSH     AC1,-1         ; AC1:Ch 0..1
+    MOVE    AC0,AC14
+    ANDI    AC0,^B00000001
+    JUMPN   AC0,PO%SD
+;---                     ; SIO CMD
+PO%SC:
+    MOVEM   R%AA,CMDR(AC1)
+    CAIE    R%AA,3
+     JRST    PO%SC9
+SIORESET:
+    MOVEI   AC0,0
+    MOVEM   AC0,TDR(AC1)
+    MOVEM   AC0,RDR(AC1)
+    MOVEM   AC0,STAR(AC1)
+    MOVEI   AC0,3
+    MOVEM   AC0,TCT
+    MOVEI   AC0,7
+    MOVEM   AC0,RCT
+PO%SC9:
+    JRST    POUT9
+;---                     ; SIO DATA
+PO%SD:
+    MOVEM   R%AA,TDR(AC1)
+    MOVE    AC0,STAR(AC1)
+    ANDI    AC0,^-<S%TDRE> ; TDRE OFF
+    MOVEM   AC0,STAR(AC1)
+    MOVE    AC0,TDR(AC1)
+    CALLS   XOUT
+    JRST    POUT9
+;
+;---------------------------- IN AC14
+PIN:
+    MOVE    AC1,AC14
+    ANDI    AC1,^B11111100
+    CAIN    AC1,SIOAD
+     JRST   PI%SIO
+PIN9:
+    RETURN
+;
+PI%SIO:
+    MOVE    AC1,AC14
+    ANDI    AC1,^B00000010
+    LSH     AC1,-1         ; AC1:Ch 0..1
+    MOVE    AC0,AC14
+    ANDI    AC0,^B00000001
+    JUMPN   AC0,PI%SD
+;---                    ; SIO STAT
+PI%SS:
+    MOVE    R%AA,STAR(AC1)
+    MOVE    AC0,R%AA
+    SOSGE   AC0,TCT
+     JRST   [
+              ORI   AC0,<S%TDRE> ; TDRE ON
+              MOVEI AC2,7
+              ADDM  AC2,TCT
+              JRST  .+1 ]
+    SOSGE   AC0,RCT
+     JRST   [
+              ORI   AC0,<S%RDRF> ; RDRF ON
+              MOVEI AC2,4
+              ADDM  AC2,RCT
+              JRST  .+1 ]
+    MOVEM   AC0,STAR(AC1)
+    JRST    PIN9
+;---                    ; SIO DATA
+PI%SD:
+    CALLS   XINP
+    MOVEM   AC0,RDR(AC1)
+    MOVE    R%AA,AC0
+    MOVE    AC0,STAR(AC1)
+    ANDI    AC0,^-<S%RDRF> ; RDRF OFF
+    MOVEM   AC0,STAR(AC1)
+    JRST    PIN9
+;-----------------
+XOUT:
+    PUSH    P,AC1
+    PUSH    P,AC2
+;
+    MOVE    AC1,AC0
+    PBOUT%
+;
+    POP     P,AC2
+    POP     P,AC1
+    RETURN
+;-----------------
+XINP:
+    PUSH    P,AC1
+    PUSH    P,AC2
+;
+    PBIN%
+    MOVE    AC0,AC1
+;
+    POP     P,AC2
+    POP     P,AC1
+    RETURN
+;-----------------
+    LIT
+    END

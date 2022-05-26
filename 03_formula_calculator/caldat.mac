@@ -1,0 +1,27 @@
+   TITLE   CALDAT - CALCULATOR DATA
+   SEARCH  ASM80,SYM80
+   SEARCH  CALSYM
+   ENTRY   END80
+   ENTRY   BUFINP,BUFOUT,CSTKB,CSTKE,STACK
+   .REQUIRE EMU80
+   SALL
+   RADIX   10
+END80:
+   ASCIZ /CALC.PTR/   ; SAVE NAME ASCIZ
+;=================================
+;== WORKING AREA
+;=================================
+BUFINP: DS SZBUFI   ; BUFF INPUT   
+BUFOUT: DS SZBUFO   ; BUFF OUTPUT  
+;
+;=================== CALCULATION STACK
+CSTKE: 
+   DS  SZCSTK   
+CSTKB:           
+;
+;=================== STACK
+STACKS:
+   DS 512
+STACK:
+;==================================
+   END 

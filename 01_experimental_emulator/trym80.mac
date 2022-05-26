@@ -1,0 +1,15 @@
+    TITLE  TRYM80
+    SEARCH TRYSYM
+    ENTRY  MAIN80
+    SALL
+    RADIX 10
+;-------------------- MAIN
+    ORG  128
+MAIN80:
+    LDA  W1
+    CMA  
+    STA  W2
+    HLT
+W1: DB   128
+W2: DB   0
+    END  

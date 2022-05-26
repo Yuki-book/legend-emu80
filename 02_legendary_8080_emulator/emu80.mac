@@ -1,0 +1,742 @@
+   TITLE    EMU80 - Handlers and emulators
+;========== EMU80.MAC
+   SEARCH   MONSYM,MACSYM,SYM80
+   EXTERN   MAIN80
+   EXTERN   OBJ80,PIN,POUT
+   .REQUIRE EMUIO ,OBJ80
+   LALL
+   RADIX  8
+;=======================================
+;  UUO VECTOR
+   LOC    40
+UUOVCT:
+   Z                ; UUO OP
+   JSP    R%PC,EMU80
+;===========================
+; 8080 Emulator Main
+;
+   RELOC
+START:
+   MOVE    P,[IOWD STK.N,STK]
+   RESET%
+   MOVEI   AC1,.PRIIN 
+   RFMOD%                 ; READ JFN Mode
+   ANDI    AC2,^-<TT%ECO> ; ECHO OFF
+   SFMOD%                 ; SET  JFN Mode
+;
+EMUENT:
+   HRROI   AC1,MSTART
+   PSOUT%
+   CALLS   INIT80
+   MOVEI   R%PC,MAIN80
+   JRST    (R%PC)  ; 8080 Program
+;
+HALT80:
+   HRROI   AC1,MHALT
+   PSOUT%
+   HALTF%
+;
+   CALLS   OBJ80
+   HALTF%
+   JUMPA   EMUENT
+MSTART:
+   ASCIZ  /EMU8080 START
+/
+MHALT:
+    ASCIZ /
+HALT!/
+
+;---------------------------
+INIT80:
+   MOVEI  R%MM  ,377
+   MOVEI  R%FG  ,000
+   MOVEI  R%AA  ,377
+   MOVEI  R%BC  ,177777
+   MOVEI  R%DE  ,177777
+   MOVEI  R%HL  ,177777
+   MOVEI  R%SP  ,177777
+   MOVEI  R%PC  ,177777
+   RETURN
+;--------------------
+EMU80: 
+   HRLOI  AC14,0         ; AC14 : 0,,777777
+   HLRZ   AC15,UUOVCT
+   CAIN   AC15,UUO1      ; UUO1 OP
+    JRST  E.EXEC
+   CAIN   AC15,UUO2      ; UUO2 OP
+    JRST  EM2B
+   CAIN   AC15,UUO3      ; UUO3 OP
+    JRST  EM3B
+   JRST   E.EXIT         ; SKIP OP
+EM2B:
+   MOVE   AC14,0(R%PC)   ; IMD
+   ADDI   R%PC,1
+   JRST   E.EXEC 
+EM3B:
+   MOVE   AC14,1(R%PC)   ; ADR H
+   LSH    AC14,8
+   IOR    AC14,0(R%PC)   ; ADR L
+   ADDI   R%PC,2
+;
+E.EXEC:
+   HRRZ   AC15,UUOVCT     ; AC15 : OP80
+   ANDI   AC15,377                  
+   CALLS  @TBL.OP(AC15)   ; AC14 : 2/3 B
+E.EXIT:
+   JRSTF   (R%PC)
+;-------------------- 
+DEFINE OP.210(AC% ,OP80) <
+   MOVE  AC%,OP80
+   ANDI  AC%,^O007 ; SRC
+>
+DEFINE OP.543(AC% ,OP80) <
+   MOVE  AC%,OP80
+   ANDI  AC%,^O070 ; DST
+   LSH   AC%,-3
+>
+;------------------------------
+; ACC OPERATION 
+;  (I)  AC14.B17 : SEL 0=IMD or 1=SREG
+;  (I)  AC14.R   : IMD 
+;  (I)  AC15.L   : A_UP (0=Yes／1=No)
+;  (I)  AC15.R   : OP80
+;  (I)  AC16     : OP PDP10 (AC0 <- AC0 OP AC14)
+ALU:
+   OP.210 AC1,AC15       ; AC1 is SREG
+   LDB    AC2,REGHL
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVE  R%MM,(AC2)
+   TRNE   AC14,^O400000  ; AC14 : IMD ?
+   LDB    AC14,REG(AC1)  ; AC14 : SRC REG
+   LDB    AC0,REGA
+   XCT    0,AC16         ; EXCUTE OP
+   TLNN   AC15,1
+    DPB    AC0,REGA      ; REGA UPDATE
+   HRLI   AC0,RQ%SZC     ; REQ
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+;
+; ACC OPERATION WITH CARRY
+ALUC:
+   OP.210 AC1,AC15       ; AC1 is SREG
+   LDB    AC2,REGHL
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVE  R%MM,(AC2)
+   TRNE   AC14,^O400000  ; AC14 : IMD ?
+   LDB    AC14,REG(AC1)  ; AC14 : SRC REG
+   LDB    AC0,REGA
+   XCT    0,AC16         ; EXCUTE OP
+   MOVE   AC14,R%FG
+   ANDI   AC14,FLG%C     ; CY
+   XCT    0,AC16         ; EXCUTE OP CARRY
+   DPB    AC0,REGA
+   HRLI   AC0,RQ%SZC     ; REQ
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+;------------------------------
+; ACC 8BIT INR/DCR 
+;  (I)  AC15.R   : OP80
+;  (I)  AC16     : OP PDP10 (AC0 <- AC0 OP AC0)
+OPM08:
+   OP.543 AC1,AC15       ; AC1 is DREG
+   LDB    AC2,REGHL
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVE  R%MM,(AC2)
+   LDB    AC0,REG(AC1)
+   XCT    0,AC16         ; EXCUTE OP INC/DEC
+   DPB    AC0,REG(AC1)
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVEM R%MM,(AC2)
+   HRLI   AC0,RQ%SZ%     ; REQ
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+;------------------------------
+; ACC 16BIT INX/DCX 
+;  (I)  AC15.R   : OP80
+;  (I)  AC16     : OP PDP10 (AC0 <- AC0 OP AC0)
+OPM16:
+   OP.543 AC1,AC15       ; AC1 is RR
+   LDB    AC0,REG16(AC1)
+   XCT    0,AC16         ; EXCUTE OP INC/DEC
+   DPB    AC0,REG16(AC1)
+   RETURN
+;
+;-------------------- XCT80
+E%LDA:
+   MOVE   AC0,(AC14)
+   DPB    AC0,REGA
+   RETURN
+E%STA:
+   LDB    AC0,REGA
+   MOVEM  AC0,(AC14)
+   RETURN
+E%LDAX:
+   OP.543 AC1,AC15        ; AC1 is RS No
+   LDB    AC14,REG16(AC1) ; AC14 : RS
+   MOVE   AC0,(AC14)
+   DPB    AC0,REGA
+   RETURN
+E%STAX:
+   OP.543 AC1,AC15        ; AC1 is RD No
+   LDB    AC14,REG16(AC1) ; AC14 : RD
+   LDB    AC0,REGA
+   MOVEM  AC0,(AC14)
+   RETURN
+;
+E%MOV:
+   OP.210 AC1,AC15       ; AC1 is SREG
+   LDB    AC2,REGHL
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVE  R%MM,(AC2)
+   LDB    AC14,REG(AC1)
+   OP.543 AC1,AC15       ; AC1 is DREG
+   DPB    AC14,REG(AC1)
+   LDB    AC2,REGHL
+   ANDI   R%MM,^D255
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVEM R%MM,(AC2)
+   RETURN
+E%MVI:
+   OP.543 AC1,AC15       ; AC1 is DREG
+   DPB    AC14,REG(AC1)
+   LDB    AC2,REGHL
+   ANDI   R%MM,^D255
+   CAIN   AC1,M          ;  ? AC1==M
+    MOVEM R%MM,(AC2)
+   RETURN
+;
+E%LXI:
+   OP.543 AC1,AC15       ; AC1 is DREG
+   DPB    AC14,REG16(AC1)
+   RETURN
+E%LHLD:
+   MOVE   AC0,(AC14)
+   DPB    AC0,REGL
+   MOVE   AC0,1(AC14)
+   DPB    AC0,REGH
+   RETURN
+E%SHLD:
+   LDB    AC0,REGL
+   MOVEM  AC0,(AC14)
+   LDB    AC0,REGH
+   MOVEM  AC0,1(AC14)
+   RETURN
+E%XCHG:
+   MOVE  AC0,R%DE
+   MOVE  R%DE,R%HL
+   MOVE  R%HL,AC0
+   RETURN
+E%SPHL:
+   MOVE  R%SP,R%HL
+   RETURN
+;
+E%ADD:
+   MOVE   AC16,[ADD AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%ADI:
+   MOVE   AC16,[ADD AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%ADC:
+   MOVE   AC16,[ADD AC0,AC14]
+   CALLS  ALUC
+   RETURN
+E%ACI:
+   MOVE   AC16,[ADD AC0,AC14]
+   CALLS  ALUC
+   RETURN
+;
+E%SUB:
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%SUI:
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%SBB:
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALUC
+   RETURN
+E%SBI:
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALUC
+   RETURN
+;
+E%CMP:
+   HRLI   AC15,1
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%CPI:
+   HRLI   AC15,1
+   MOVE   AC16,[SUB AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%ANA:
+   MOVE   AC16,[AND AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%ANI:
+   MOVE   AC16,[AND AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%ORA:
+   MOVE   AC16,[IOR AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%ORI:
+   MOVE   AC16,[IOR AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%XRA:
+   MOVE   AC16,[XOR AC0,AC14]
+   CALLS  ALU
+   RETURN
+E%XRI:
+   MOVE   AC16,[XOR AC0,AC14]
+   CALLS  ALU
+   RETURN
+;
+E%CMA:
+   SETCA  R%AA,
+   ANDI   R%AA,^O377
+   RETURN
+;
+E%INR:
+   MOVE   AC16,[AOJ  AC0,0] ;+1
+   CALLS  OPM08
+   RETURN
+E%DCR:
+   MOVE   AC16,[SOJ  AC0,0] ;-1
+   CALLS  OPM08
+   RETURN
+;
+E%INX:
+   MOVE   AC16,[AOJ  AC0,0] ;+1
+   CALLS  OPM16
+   RETURN
+E%DCX:
+   MOVE   AC16,[SOJ  AC0,0] ;-1
+   CALLS  OPM16
+   RETURN
+;
+E%DAD:
+   OP.543 AC1,AC15       ; AC1 is RR
+   LDB    AC14,REG16(AC1)
+   LDB    AC0,REGHL
+   ADD    AC0,AC14
+   DPB    AC0,REGHL
+   HRLI   AC0,RQ%C16     ; REQ
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+;
+E%RLC:
+   LDB    AC0,REGA
+   MOVE   AC1,AC0
+   ROT    AC1,-^D8       ; AC1.B35 : REGA
+   LSHC   AC0,1
+   DPB    AC0,REGA
+   HRLI   AC0,RQ%%%C     ; REQ CY
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+E%RRC:
+   LDB    AC0,REGA
+   MOVE   AC1,AC0
+   ROT    AC1,-^D8       ; AC1.B35 : REGA
+   LSHC   AC0,-1
+   ASH    AC1,-^D28
+   MOVE   AC0,AC1
+   DPB    AC0,REGA
+   HRLI   AC0,RQ%%%C     ; REQ CY
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+E%RAL:
+   LDB    AC0,REGA
+   MOVE   AC1,R%FG
+   ROT    AC1,-1         ; AC1.B35 : CY
+   LSHC   AC0,1
+   DPB    AC0,REGA
+   HRLI   AC0,RQ%%%C     ; REQ CY
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+E%RAR:
+   LDB    AC1,REGA
+   ROT    AC1,-^D8       ; AC1.B35 : REGA
+   MOVE   AC0,R%FG       ; AC0.B0 : CY
+   LSHC   AC0,-1
+   LDB    AC0,REGA
+   LSHC   AC0,^D8
+   DPB    AC0,REGA
+   HRLI   AC0,RQ%%%C     ; REQ CY
+   CALLS  FLGUP          ; FLAG UPDATE
+   RETURN
+;
+;
+%PUSH:                     ; AC1 : 0..7
+   MOVE   AC3,R%SP
+   LDB    AC0,SPR16(AC1)   ; .Hi
+   MOVEM  AC0,-1(AC3)
+   LDB    AC0,SPR16+1(AC1) ; .Lo
+   MOVEM  AC0,-2(AC3)
+   SUBI   AC3,2
+   MOVEM  AC3,R%SP
+   RETURN
+%POP:                      ; AC1 : 0..7
+   MOVE   AC3,R%SP
+   MOVE   AC0,1(AC3)
+   DPB    AC0,SPR16(AC1)
+   MOVE   AC0,(AC3)
+   DPB    AC0,SPR16+1(AC1)
+   ADDI   AC3,2
+   MOVEM  AC3,R%SP
+   RETURN
+;
+E%PUSH:
+   OP.543 AC1,AC15       ; AC1 is SREG
+   CALLS  %PUSH
+   RETURN
+E%POP:
+   OP.543 AC1,AC15       ; AC1 is SREG
+   CALLS  %POP
+   RETURN
+;
+E%XTHL:
+   MOVE  AC3,R%SP
+   LDB   AC0,REGL
+   EXCH  AC0,(AC3)
+   DPB   AC0,REGL
+   LDB   AC0,REGH
+   EXCH  AC0,1(AC3)
+   DPB   AC0,REGH
+   RETURN
+;
+E%PCHL:
+   LDB   AC0,REGHL
+   DPB   AC0,REGPC
+   RETURN
+;
+%JMP:
+   DPB   AC14,REGPC
+   RETURN
+E%JMP:
+   CALLS  %JMP
+   RETURN
+E%JNZ:
+   TRNN  R%FG,FLG%Z     
+    CALLS  %JMP         ; ? ZF=0
+   RETURN
+E%JZ:
+   TRNE  R%FG,FLG%Z     
+    CALLS  %JMP         ; ? ZF=1
+   RETURN
+E%JNC:
+   TRNN  R%FG,FLG%C     
+    CALLS  %JMP         ; ? CF=0
+   RETURN
+E%JC:
+   TRNE  R%FG,FLG%C     
+    CALLS  %JMP         ; ? CF=1
+   RETURN
+E%JP:
+   TRNN  R%FG,FLG%S     
+    CALLS  %JMP         ; ? SF=0
+   RETURN
+E%JM:
+   TRNE  R%FG,FLG%S     
+    CALLS  %JMP         ; ? SF=1
+   RETURN
+;
+%CALL:
+   MOVEI  AC1,^D8        ; AC1 is PC
+   CALLS  %PUSH
+   DPB    AC14,REGPC
+   RETURN
+%RET:
+   MOVEI  AC1,^D8        ; AC1 is PC
+   CALLS  %POP
+   RETURN
+E%CALL:
+   CALLS  %CALL
+   RETURN
+E%RET:
+   CALLS  %RET
+   RETURN
+;
+E%CNZ:
+   TRNN  R%FG,FLG%Z     
+    CALLS  %CALL         ; ? ZF=0
+   RETURN
+E%CZ:
+   TRNE  R%FG,FLG%Z     
+    CALLS  %CALL         ; ? ZF=1
+   RETURN
+E%CNC:
+   TRNN  R%FG,FLG%C     
+    CALLS  %CALL         ; ? CF=0
+   RETURN
+E%CC:
+   TRNE  R%FG,FLG%C     
+    CALLS  %CALL         ; ? CF=1
+   RETURN
+E%CP:
+   TRNN  R%FG,FLG%S     
+    CALLS  %CALL         ; ? SF=0
+   RETURN
+E%CM:
+   TRNE  R%FG,FLG%S     
+    CALLS  %CALL         ; ? SF=1
+   RETURN
+;
+E%RNZ:
+   TRNN  R%FG,FLG%Z     
+    CALLS  %RET         ; ? ZF=0
+   RETURN
+E%RZ:
+   TRNE  R%FG,FLG%Z     
+    CALLS  %RET         ; ? ZF=1
+   RETURN
+E%RNC:
+   TRNN  R%FG,FLG%C     
+    CALLS  %RET         ; ? CF=0
+   RETURN
+E%RC:
+   TRNE  R%FG,FLG%C     
+    CALLS  %RET         ; ? CF=1
+   RETURN
+E%RP:
+   TRNN  R%FG,FLG%S     
+    CALLS  %RET         ; ? SF=0
+   RETURN
+E%RM:
+   TRNE  R%FG,FLG%S     
+    CALLS  %RET         ; ? SF=1
+   RETURN
+;
+E%IN:
+   CALLS  PIN
+   RETURN
+E%OUT:
+   CALLS  POUT
+   RETURN
+;
+E%STC:
+   IORI   R%FG,FLG%C     ; CARRY : 1
+   RETURN
+E%CMC:
+   XORI   R%FG,FLG%C     ; CARRY : Compliment
+   RETURN
+E%NOP:
+   RETURN
+E%HLT:
+   MOVEI  R%PC,HALT80
+   RETURN
+;
+REG:        ; REG(8BIT)  BYTE POINTER
+REGB: POINT 8 ,R%BC ,^D27 ; 0
+REGC: POINT 8 ,R%BC ,^D35 ; 1
+REGD: POINT 8 ,R%DE ,^D27 ; 2
+REGE: POINT 8 ,R%DE ,^D35 ; 3
+REGH: POINT 8 ,R%HL ,^D27 ; 4
+REGL: POINT 8 ,R%HL ,^D35 ; 5
+REGM: POINT 8 ,R%MM ,^D35 ; 6
+REGA: POINT 8 ,R%AA ,^D35 ; 7
+;
+REG16:      ; REG(16BIT) BYTE POINTER
+REGBC: POINT 16 ,R%BC ,^D35 ; 0
+       POINT 16 ,R%BC ,^D35 ; 1
+REGDE: POINT 16 ,R%DE ,^D35 ; 2
+       POINT 16 ,R%DE ,^D35 ; 3
+REGHL: POINT 16 ,R%HL ,^D35 ; 4
+       POINT 16 ,R%HL ,^D35 ; 5
+REGSP: POINT 16 ,R%SP ,^D35 ; 6
+       POINT 16 ,R%SP ,^D35 ; 7
+REGPC: POINT 16 ,R%PC ,^D35
+;
+SPR16:     ; STACK PARE REG BYTE POINTER 
+       POINT 8 ,R%BC ,^D27 ; 0
+       POINT 8 ,R%BC ,^D35 ;   1
+       POINT 8 ,R%DE ,^D27 ; 2
+       POINT 8 ,R%DE ,^D35 ;   3
+       POINT 8 ,R%HL ,^D27 ; 4
+       POINT 8 ,R%HL ,^D35 ;   5
+       POINT 8 ,R%AA ,^D35 ; 6
+       POINT 8 ,R%FG ,^D35 ;   7
+       POINT 8 ,R%PC ,^D27 ; 8    ; PC
+       POINT 8 ,R%PC ,^D35 ;   9  ; PC
+       
+;
+E%RST:
+E%DAA:
+E%DI:
+E%EI:
+E%CPE:
+E%CPO:
+E%JPE:
+E%JPO:
+E%RPE:
+E%RPO:
+E%XXX:
+   CALLS  ERDSP
+   RETURN
+;====================================================
+TBL.OP:
+;     00      01      02      03
+;---+-------+-------+-------+-------+
+ EXP E%NOP  ,E%LXI  ,E%STAX ,E%INX  ; 00 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%RLC  ; 04 
+ EXP E%XXX  ,E%DAD  ,E%LDAX ,E%DCX  ; 08 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%RRC  ; 0C 
+ EXP E%XXX  ,E%LXI  ,E%STAX ,E%INX  ; 10 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%RAL  ; 14 
+ EXP E%XXX  ,E%DAD  ,E%LDAX ,E%DCX  ; 18 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%RAR  ; 1C 
+ EXP E%XXX  ,E%LXI  ,E%SHLD ,E%INX  ; 20 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%DAA  ; 24 
+ EXP E%XXX  ,E%DAD  ,E%LHLD ,E%DCX  ; 28 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%CMA  ; 2C 
+ EXP E%XXX  ,E%LXI  ,E%STA  ,E%INX  ; 30 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%STC  ; 34 
+ EXP E%XXX  ,E%DAD  ,E%LDA  ,E%DCX  ; 38 
+ EXP E%INR  ,E%DCR  ,E%MVI  ,E%CMC  ; 3C 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 40 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 44 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 48 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 4C 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 50 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 54 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 58 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 5C 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 60 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 64 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 68 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 6C 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 70 
+ EXP E%MOV  ,E%MOV  ,E%HLT  ,E%MOV  ; 74 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 78 
+ EXP E%MOV  ,E%MOV  ,E%MOV  ,E%MOV  ; 7C 
+ EXP E%ADD  ,E%ADD  ,E%ADD  ,E%ADD  ; 80 
+ EXP E%ADD  ,E%ADD  ,E%ADD  ,E%ADD  ; 84 
+ EXP E%ADC  ,E%ADC  ,E%ADC  ,E%ADC  ; 88 
+ EXP E%ADC  ,E%ADC  ,E%ADC  ,E%ADC  ; 8C 
+ EXP E%SUB  ,E%SUB  ,E%SUB  ,E%SUB  ; 90 
+ EXP E%SUB  ,E%SUB  ,E%SUB  ,E%SUB  ; 94 
+ EXP E%SBB  ,E%SBB  ,E%SBB  ,E%SBB  ; 98 
+ EXP E%SBB  ,E%SBB  ,E%SBB  ,E%SBB  ; 9C 
+ EXP E%ANA  ,E%ANA  ,E%ANA  ,E%ANA  ; A0 
+ EXP E%ANA  ,E%ANA  ,E%ANA  ,E%ANA  ; A4 
+ EXP E%XRA  ,E%XRA  ,E%XRA  ,E%XRA  ; A8 
+ EXP E%XRA  ,E%XRA  ,E%XRA  ,E%XRA  ; AC 
+ EXP E%ORA  ,E%ORA  ,E%ORA  ,E%ORA  ; B0 
+ EXP E%ORA  ,E%ORA  ,E%ORA  ,E%ORA  ; B4 
+ EXP E%CMP  ,E%CMP  ,E%CMP  ,E%CMP  ; B8 
+ EXP E%CMP  ,E%CMP  ,E%CMP  ,E%CMP  ; BC 
+ EXP E%RNZ  ,E%POP  ,E%JNZ  ,E%JMP  ; C0 
+ EXP E%CNZ  ,E%PUSH ,E%ADI  ,E%RST  ; C4 
+ EXP E%RZ   ,E%RET  ,E%JZ   ,E%XXX  ; C8 
+ EXP E%CZ   ,E%CALL ,E%ACI  ,E%RST  ; CC 
+ EXP E%RNC  ,E%POP  ,E%JNC  ,E%OUT  ; D0 
+ EXP E%CNC  ,E%PUSH ,E%SUI  ,E%RST  ; D4 
+ EXP E%RC   ,E%XXX  ,E%JC   ,E%IN   ; D8 
+ EXP E%CC   ,E%XXX  ,E%SBI  ,E%RST  ; DC 
+ EXP E%RPO  ,E%POP  ,E%JPO  ,E%XTHL ; E0 
+ EXP E%CPO  ,E%PUSH ,E%ANI  ,E%RST  ; E4 
+ EXP E%RPE  ,E%PCHL ,E%JPE  ,E%XCHG ; E8 
+ EXP E%CPE  ,E%XXX  ,E%XRI  ,E%RST  ; EC 
+ EXP E%RP   ,E%POP  ,E%JP   ,E%DI   ; F0 
+ EXP E%CP   ,E%PUSH ,E%ORI  ,E%RST  ; F4 
+ EXP E%RM   ,E%SPHL ,E%JM   ,E%EI   ; F8 
+ EXP E%CM   ,E%XXX  ,E%CPI  ,E%RST  ; FC 
+;
+;*===================================
+;*  UPDATE FLAG
+;*-----------------------------------
+;*  (I) AC0.L   : FLAG REQ
+;*  (I) AC0.R   : REGISTOR
+;*  (O) R%FG    : FLAG 0/1
+;===================================
+FLGUP:
+    TLNE   AC0,RQ%S   ;S REQ
+     CALLS FLGS
+    TLNE   AC0,RQ%Z   ;Z REQ
+     CALLS FLGZ
+    TLNE   AC0,RQ%C   ;C REQ
+     CALLS FLGC
+    TLNE   AC0,RQ%C16 ;C16 REQ
+     CALLS FLGC16
+    RETURN
+FLGS:
+    TRZ   R%FG,FLG%S   ; SIGN OFF
+    TRNE  AC0,^O200    ; SIGN CHECK
+     TRO   R%FG,FLG%S  ; SIGN ON
+    RETURN
+FLGZ:
+    TRZ   R%FG,FLG%Z   ; ZERO OFF
+    TRNN  AC0,^O377    ; ZERO CHECK
+     TRO  R%FG,FLG%Z   ; ZERO ON
+    RETURN
+FLGC:
+    TRZ   R%FG,FLG%C   ; CARRY OFF
+    TRNE  AC0,^O400    ; CARRY CHECK
+     TRO  R%FG,FLG%C   ; CARRY ON
+    RETURN
+FLGC16:
+    TRZ   R%FG,FLG%C   ; CARRY OFF
+    TRNE  AC0,^O200000 ; CARRY16 CHECK
+     TRO  R%FG,FLG%C   ; CARRY ON
+    RETURN
+;
+;--------------------------------- AC15 : OP80
+ERDSP:
+    PUSH    P,AC0
+    PUSH    P,AC1
+    PUSH    P,AC2
+;
+    HRROI   AC1,[ASCIZ /? Not Seport OP (/]
+    PSOUT%
+    MOVE    AC1,AC15
+    MOVEI   AC2,2
+    CALLS   DSPWD
+    HRROI   AC1,[ASCIZ /)/]
+    PSOUT%
+;
+    POP     P,AC2
+    POP     P,AC1
+    POP     P,AC0
+    RETURN
+;*============================
+;*  Disp One Word
+;*----------------------------
+;* AC1  :  WORD
+;* AC2  :  N DIGIT
+;
+DSPWD:
+    PUSH    P,AC0
+    PUSH    P,AC1
+    PUSH    P,AC2
+    PUSH    P,AC3
+;
+    HRLZ    AC3,AC2   ; COL
+    OR      AC3,[NO%LFL!NO%ZRO!^D16]
+    MOVE    AC2,AC1
+    MOVEI   AC1,.PRIOU
+    NOUT%
+     EJSHLT
+;
+    POP     P,AC3
+    POP     P,AC2
+    POP     P,AC1
+    POP     P,AC0
+    RETURN
+;
+STK.N=100
+STK: BLOCK   STK.N
+;
+     LIT
+     END     START
