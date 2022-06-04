@@ -84,7 +84,7 @@ Copyright (c) 2022 yuki
 
 ## Author
 
-Yukio Takase  [Yuki Github](https://github.com/Yuki-book)
+Yukio Takase  [Yuki GitHub](https://github.com/Yuki-book)
 
 [A notebook of a computer expert](http://my-web-site.iobb.net/~yuki/)
 
