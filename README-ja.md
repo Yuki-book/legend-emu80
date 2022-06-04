@@ -1,4 +1,5 @@
-[README in English](./README.md)
+[README in English is here](./README.md)
+________________________________________________
 
 legend-emu80
 ============
@@ -16,8 +17,9 @@ PDP-10で実行する伝説の8080エミュレーターです。
 
 ## Description
 
+**legend-emu80** Githubには、
 『超マシン復活 #4 DEC TOPS-20 伝説の8080エミュレーターとALTAIR』に
-掲載のソースコード一式があります。
+掲載の主なソースコードがあります。
 
 この本の内容を以下に示します。
 
@@ -33,29 +35,29 @@ PDP-10で実行する伝説の8080エミュレーターです。
 
 ## Contents
 
-| No. | Directory                  | Explanation               | Chapter    | Platform
-|:---:| -------------------------- | ------------------------- | ---------- |----------------------
-|  1  | 01_experimental_emulator   | 実験的なエミュレーター    | 第3章 3.4  | PDP-10 TOPS-20
-|  2  | 02_legendary_8080_emulator | 伝説の8080エミュレーター  | 第4章,第6章| PDP-10 TOPS-20
-|  3  | 03_formula_calculator      | 8080数式電卓              | 第5章      | PDP-10 TOPS-20
-|  4  | 04_calc_lex_yacc           | 数式電卓 lex / yacc       | 第5章 5.1  | Linux
-|  5  | 05_boot_loader             | Altair ブートローダー     | 第7章 7.3  | Altair simH
-|  6  | 06_simH_altair             | Altair simH ブート一式    | 第7章 7.4  | Altair simH
+| No. | Directory                  | Explanation                    | Chapter    | Platform
+|:---:| -------------------------- | ------------------------------ | ---------- |----------------------
+|  1  | 01_experimental_emulator   | 実験的なエミュレーター         | 第3章 3.4  | PDP-10 TOPS-20
+|  2  | 02_legendary_8080_emulator | 伝説の8080エミュレーター       | 第4章,第6章| PDP-10 TOPS-20
+|  3  | 03_formula_calculator      | 8080アセンブラで書いた数式電卓 | 第5章      | PDP-10 TOPS-20
+|  4  | 04_calc_lex_yacc           | lex/yaccで書いた数式電卓       | 第5章 5.1  | Linux
+|  5  | 05_boot_loader             | Altairのブートローダー         | 第7章 7.3  | Altair simH
+|  6  | 06_simH_altair             | Altair simH ブート一式         | 第7章 7.4  | Altair simH
 
-- 01 [実験的なエミュレーター](./01_experimental_emulator/README-ja-01.md)
-- 02 [伝説の8080エミュレーター](./02_legendary_8080_emulator/README-ja-02.md)
-- 03 [8080数式電卓](./03_formula_calculator/README-ja-03.md)
-- 04 [数式電卓 lex / yacc](./04_calc_lex_yacc/README-ja-04.md)
-- 05 [Altair ブートローダー](./05_boot_loader/README-ja-05.md)
-- 06 [Altair simH ブート一式](./06_simH_altair/README-ja-06.md)
+- 01 -- [実験的なエミュレーター](./01_experimental_emulator/README-ja-01.md)
+- 02 -- [伝説の8080エミュレーター](./02_legendary_8080_emulator/README-ja-02.md)
+- 03 -- [8080アセンブラで書いた数式電卓](./03_formula_calculator/README-ja-03.md)
+- 04 -- [lex/yaccで書いた数式電卓](./04_calc_lex_yacc/README-ja-04.md)
+- 05 -- [Altairのブートローダー](./05_boot_loader/README-ja-05.md)
+- 06 -- [Altair simH ブート一式](./06_simH_altair/README-ja-06.md)
 
 ## Requirement
 
 ### PDP-10
 
 **PDP-10**は現存していません。
-LinuxマシンでKLH10エミュレーターを実行して
-PDP-10マシン TOPS-20 OSを実行します。
+LinuxマシンでKLH10エミュレーターを実行すると
+PDP-10マシンのTOPS-20 OSが走ります。
 [Panda TOPS-20 Distribution](http://panda.trailing-edge.com/)を使用します。
 
 ![Panda TOPS-20 Distribution](./pic/qr_url_panda.png)
@@ -67,7 +69,7 @@ PDP-10マシン TOPS-20 OSを実行します。
 LinuxマシンでAltairシミュレーターを実行して
 8080バイナリーコードを実行します。
 [simH](https://github.com/simh/simh)というマルチシステムシミュレーターを
-使用してAltairマシンをシミュレートします
+使用してAltairマシンをシミュレートします。
 
 ![simH Altair](./pic/qr_github_simh.png)
 
