@@ -1,4 +1,8 @@
-[TOP README](../README-ja.md)
+[Top README is here](../README-ja.md)
+________________________________________________
+
+legend-emu80
+============
 
 # 伝説の8080エミュレーター
 
