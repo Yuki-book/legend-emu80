@@ -1,0 +1,59 @@
+    TITLE   MAIN80
+    SEARCH  ASM80,SYM80
+    ENTRY   MAIN80
+    EXTERN  PORTINIT,OUTCHR
+    EXTERN  END80,STACK
+   .REQUIRE EMU80,MAINSB
+;==================================
+COMMENT *
+    8080 SAMPLE PROGRAM
+    --------- ---- -- --------
+    COPYRIGHT 2024 BY Y.TAKASE
+    --------- ---- -- --------
+*
+;==================================
+    SALL
+    RADIX 10
+MAIN80:
+    LXI   SP,STACK
+    CALL  PORTINIT  ; PORT INIT
+;--------------------------------
+    XRA   A         ; SUM=0
+    MVI   B,1
+    MVI   C,10      ; COUNT(10..1)
+LOOPX:
+    ADD   B         ; SUM=SUM+B
+    CALL  OUTSUM    ; OUT SUM (A)
+    INR   B
+    DCR   C
+    JNZ   LOOPX
+EXIT:
+    HLT
+;=================================
+; (I) A  : NUM
+OUTSUM:
+   PUSH  PSW
+   PUSH  B
+;
+   MOV   C,A
+   MVI   A,"1"
+OUTLP:
+   CALL  OUTCHR   ; OUTPUT CHAR (A)
+   INR   A
+   CPI   "9"+1
+   JM    OUTSK
+   MVI   A,"0"
+OUTSK:
+   DCR   C
+   JNZ   OUTLP
+;
+   MVI   A,13
+   CALL  OUTCHR   ; OUTPUT CHAR (A is CR)
+   MVI   A,10
+   CALL  OUTCHR   ; OUTPUT CHAR (A is LF)
+;
+   POP   B
+   POP   PSW
+   RET
+;
+    END  

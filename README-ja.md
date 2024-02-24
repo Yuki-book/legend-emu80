@@ -43,6 +43,7 @@ PDP-10で実行する伝説の8080エミュレーターです。
 |  4  | 04_calc_lex_yacc           | lex/yaccで書いた数式電卓       | 第5章 5.1  | Linux
 |  5  | 05_boot_loader             | Altairのブートローダー         | 第7章 7.3  | Altair simH
 |  6  | 06_simH_altair             | Altair simH ブート一式         | 第7章 7.4  | Altair simH
+|  7  | 07_8080emu_prog            | 8080エミュレーター＆サンプル   | －         | PDP-10 TOPS-20 (i8080)
 
 - 01 -- [実験的なエミュレーター](./01_experimental_emulator/README-ja-01.md)
 - 02 -- [伝説の8080エミュレーター](./02_legendary_8080_emulator/README-ja-02.md)
@@ -50,6 +51,7 @@ PDP-10で実行する伝説の8080エミュレーターです。
 - 04 -- [lex/yaccで書いた数式電卓](./04_calc_lex_yacc/README-ja-04.md)
 - 05 -- [Altairのブートローダー](./05_boot_loader/README-ja-05.md)
 - 06 -- [Altair simH ブート一式](./06_simH_altair/README-ja-06.md)
+- 07 -- [8080エミュレーター＆サンプル](./07_8080emu_prog/README-ja-07.md)
 
 ## Requirement
 

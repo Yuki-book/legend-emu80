@@ -45,6 +45,7 @@ The contents of this book are shown below.
 |  4  | 04_calc_lex_yacc           | Formula calculator written in lex / yacc     | Chapter 5 5.1  | Linux
 |  5  | 05_boot_loader             | Altair boot loader                           | Chapter 7 7.3  | Altair simH
 |  6  | 06_simH_altair             | Altair simH Boot set                         | Chapter 7 7.4  | Altair simH
+|  7  | 07_8080emu_prog            | 8080 Emulator & Samples                      | -              | PDP-10 TOPS-20  (i8080)
 
 - 01 -- [Experimental emulator](./01_experimental_emulator/README-ja-01.md)
 - 02 -- [Legendary 8080 emulator](./02_legendary_8080_emulator/README-ja-02.md)
@@ -52,6 +53,7 @@ The contents of this book are shown below.
 - 04 -- [Formula calculator written in lex / yacc ](./04_calc_lex_yacc/README-ja-04.md)
 - 05 -- [Altair boot loader](./05_boot_loader/README-ja-05.md)
 - 06 -- [Altair simH Boot set](./06_simH_altair/README-ja-06.md)
+- 07 -- [8080 Emulator & Samples](./07_8080emu_prog/README-ja-07.md)
 
 ## Requirement
 
